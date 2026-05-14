@@ -1,0 +1,20 @@
+# Sign Language Translation – Python dependencies
+# Install with:  pip install -r requirements.txt
+#
+# NOTE: Python 3.14 is very new. If a package fails to install,
+# try Python 3.11 or 3.12 which have wider binary wheel support.
+
+# ── Core computer-vision & ML ─────────────────────────────────────────────────
+numpy>=1.26
+opencv-python>=4.9          # or opencv-python-headless on servers without display
+mediapipe>=0.10             # hand landmark detection
+scikit-learn>=1.4           # MLP, PCA, pipeline, metrics
+joblib>=1.3                 # model serialisation
+
+# ── NLP (sentence generation) ────────────────────────────────────────────────
+transformers>=4.40          # T5 tokeniser + model
+torch>=2.2                  # transformers backend (CPU-only is fine)
+sentencepiece>=0.1.99       # required by T5Tokenizer
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+tqdm>=4.66                  # progress bars in dataset building

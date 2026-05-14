@@ -1,0 +1,19 @@
+{
+  "test_accuracy": 0.9974916387959866,
+  "ensemble_accuracy": 0.9966555183946488,
+  "classes": [
+    "Going",
+    "Hello",
+    "How",
+    "I",
+    "Meet",
+    "Nice",
+    "School",
+    "Thank you",
+    "You"
+  ],
+  "feature_dim": 252,
+  "best_model": "SVM",
+  "augmentation": "Mirror + Noise + Scale + MirrorNoise + Rotation (6x)",
+  "grammar_model": "vennify/t5-base-grammar-correction + LanguageTool fallback"
+}
