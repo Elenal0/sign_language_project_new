@@ -1,14 +1,45 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en" class="dark" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="SanketSetu — Real-time Indian Sign Language Translation powered by AI. Bridge the communication gap with our ML-powered ISL translator." />
-    <meta name="theme-color" content="#0f172a" />
-    <title>SanketSetu — Indian Sign Language Translator</title>
+    <meta name="description" content="SanketSetu — Real-time Indian Sign Language translator powered by AI. Converts ISL gestures to text using MediaPipe and ML." />
+    <meta name="theme-color" content="#0a0a14" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤟</text></svg>" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <title>SanketSetu — Indian Sign Language Bridge</title>
+
+    <style>
+      /* Loading fallback */
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #0a0a14;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+      #root:empty::after {
+        content: '';
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(0, 196, 204, 0.15);
+        border-top-color: #00c4cc;
+        border-radius: 50%;
+        animation: loader-spin 0.8s linear infinite;
+      }
+      @keyframes loader-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

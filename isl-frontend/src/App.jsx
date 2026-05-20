@@ -1,40 +1,31 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import Home from './pages/Home'
 import Translator from './pages/Translator'
 import Dictionary from './pages/Dictionary'
-import Learn from './pages/Learn'
 import History from './pages/History'
+import Learn from './pages/Learn'
 import Dashboard from './pages/Dashboard'
-
-function Page({ children }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
-}
+import NotFound from './pages/NotFound'
+import AnimatedToast from './components/AnimatedToast'
+import CommandPalette from './components/CommandPalette'
 
 export default function App() {
-  const location = useLocation()
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route element={<Layout />}>
-          <Route path="/"           element={<Page><Home /></Page>} />
-          <Route path="/translate"  element={<Page><Translator /></Page>} />
-          <Route path="/dictionary" element={<Page><Dictionary /></Page>} />
-          <Route path="/learn"      element={<Page><Learn /></Page>} />
-          <Route path="/history"    element={<Page><History /></Page>} />
-          <Route path="/dashboard"  element={<Page><Dashboard /></Page>} />
+    <>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="translate" element={<Translator />} />
+          <Route path="dictionary" element={<Dictionary />} />
+          <Route path="history" element={<History />} />
+          <Route path="learn" element={<Learn />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
-    </AnimatePresence>
+      <AnimatedToast />
+      <CommandPalette />
+    </>
   )
 }

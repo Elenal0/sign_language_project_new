@@ -1,145 +1,168 @@
 """
-SanketSetu — FastAPI Backend Server
+server.py  — SanketSetu FastAPI backend
+Serves:
+  POST /predict        — ISL sign prediction from webcam frame
+  GET  /health         — model readiness check
+  WS   /ws/signal/{r}  — WebRTC signaling relay (2-user video call)
+  WS   /ws/chat/{r}    — Translation text relay (2-user video call)
 """
 
-import sys
-import os
+from __future__ import annotations
+
 import base64
-import time
+import binascii
+import json
 import logging
+import os
+import sys
+import time
 from pathlib import Path
 
 import cv2
-import numpy as np
 import joblib
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Resolve paths directly — no dependency on config variable names
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MODELS_DIR = PROJECT_ROOT / "models"
-PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
+# Resolve paths relative to project root (signlanguageproject/)
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
-sys.path.insert(0, str(PROJECT_ROOT))
 from src.feature_extraction import HandLandmarkExtractor
+from api.signaling import router as signaling_router
 
-# ── Logging ───────────────────────────────────────────────────────────────────
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("sanketsetu")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# ── App ───────────────────────────────────────────────────────────────────────
-app = FastAPI(
-    title="SanketSetu API",
-    description="Indian Sign Language Translation — ML Backend",
-    version="2.0.0",
-)
+app = FastAPI(title="SanketSetu API", version="2.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Model loading (singleton at startup) ──────────────────────────────────────
-model = None
-label_encoder = None
-extractor = None
+# Mount signaling routes (WebSocket endpoints)
+app.include_router(signaling_router)
+
+# ── Model loading ─────────────────────────────────────────────────────────────
+MODEL_PATH = BASE_DIR / "models" / "sign_language_model.pkl"
+ENCODER_PATH = BASE_DIR / "data" / "processed" / "label_encoder.pkl"
+
+model        = None
+labelencoder = None
+extractor    = None
 
 @app.on_event("startup")
-async def load_models():
-    global model, label_encoder, extractor
-
-    model_path = MODELS_DIR / "sign_language_model.pkl"
-    encoder_path = PROCESSED_DATA_DIR / "label_encoder.pkl"
-
-    if not model_path.exists():
-        raise RuntimeError(f"Model not found at {model_path}")
-    if not encoder_path.exists():
-        raise RuntimeError(f"Label encoder not found at {encoder_path}")
-
-    model = joblib.load(model_path)
-    label_encoder = joblib.load(encoder_path)
-    extractor = HandLandmarkExtractor(static_image_mode=True)
-
-    logger.info(f"✅ SanketSetu API ready. Classes: {list(label_encoder.classes_)}")
+async def load_models() -> None:
+    global model, labelencoder, extractor
+    try:
+        model        = joblib.load(MODEL_PATH)
+        labelencoder = joblib.load(ENCODER_PATH)
+        extractor    = HandLandmarkExtractor(static_image_mode=True)
+        logger.info(f"SanketSetu API ready. Classes: {list(labelencoder.classes_)}")
+    except FileNotFoundError as e:
+        logger.error(f"Model file missing: {e}. Run python -m src.train first.")
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 class PredictRequest(BaseModel):
-    image: str  # base64-encoded JPEG frame from webcam
+    image: str  # base64-encoded JPEG frame
 
 class PredictResponse(BaseModel):
-    sign: str
-    confidence: float
-    all_scores: dict
+    sign:        str
+    confidence:  float
+    all_scores:  dict
     hand_detected: bool
-    inference_ms: float
+    inference_ms:  float
 
 
-# ── Prediction endpoint ───────────────────────────────────────────────────────
+# ── Predict endpoint ──────────────────────────────────────────────────────────
 @app.post("/predict", response_model=PredictResponse)
-async def predict(req: PredictRequest):
-    if model is None or label_encoder is None or extractor is None:
+async def predict(req: PredictRequest) -> PredictResponse:
+    if model is None or labelencoder is None or extractor is None:
         raise HTTPException(status_code=503, detail="Models not loaded yet.")
 
     try:
-        img_bytes = base64.b64decode(req.image)
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    except Exception as e:
+        img_bytes = base64.b64decode(req.image, validate=True)
+        nparr     = np.frombuffer(img_bytes, np.uint8)
+        frame     = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except (binascii.Error, ValueError) as e:
         raise HTTPException(status_code=400, detail=f"Invalid image data: {e}")
+    except Exception:
+        logger.exception("Unexpected image decode failure")
+        raise HTTPException(status_code=400, detail="Invalid image data.")
 
     if frame is None:
-        raise HTTPException(status_code=400, detail="Could not decode image.")
+        raise HTTPException(status_code=400, detail="Could not decode image frame.")
 
     t0 = time.perf_counter()
-    features = extractor.extract_from_frames([frame])  # pass as list
-    inference_ms = (time.perf_counter() - t0) * 1000
-
-    if features is None:
+    try:
+        features = extractor.extract_from_frame(frame)
+        inference_ms = (time.perf_counter() - t0) * 1000
+    except Exception:
+        logger.exception("Hand landmark extraction failed")
+        inference_ms = (time.perf_counter() - t0) * 1000
         return PredictResponse(
-            sign="No hand detected",
+            sign="",
             confidence=0.0,
             all_scores={},
             hand_detected=False,
             inference_ms=round(inference_ms, 1),
         )
 
-    features = features.reshape(1, -1)
-    probs = model.predict_proba(features)[0]
-    predicted_idx = int(np.argmax(probs))
-    predicted_label = str(label_encoder.classes_[predicted_idx])
-    confidence = float(probs[predicted_idx])
+    if features is None:
+        return PredictResponse(
+            sign="",
+            confidence=0.0,
+            all_scores={},
+            hand_detected=False,
+            inference_ms=round(inference_ms, 1),
+        )
+
+    try:
+        features = features.reshape(1, -1)
+        expected_features = getattr(model, "n_features_in_", None)
+        if expected_features is not None and features.shape[1] != expected_features:
+            logger.error(
+                "Feature size mismatch: got %s, model expects %s",
+                features.shape[1],
+                expected_features,
+            )
+            raise HTTPException(status_code=500, detail="Model feature size mismatch.")
+
+        proba = model.predict_proba(features)[0]
+        idx   = int(np.argmax(proba))
+        sign  = str(labelencoder.classes_[idx])
+        conf  = float(proba[idx])
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Model prediction failed")
+        raise HTTPException(status_code=500, detail="Model prediction failed.")
 
     all_scores = {
-        str(label_encoder.classes_[i]): round(float(p), 4)
-        for i, p in enumerate(probs)
+        str(labelencoder.classes_[i]): round(float(p), 4)
+        for i, p in enumerate(proba)
     }
 
     return PredictResponse(
-        sign=predicted_label,
-        confidence=round(confidence, 4),
+        sign=sign,
+        confidence=conf,
         all_scores=all_scores,
         hand_detected=True,
         inference_ms=round(inference_ms, 1),
     )
 
 
-# ── Health endpoints ──────────────────────────────────────────────────────────
+# ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
-async def health():
+async def health() -> dict:
     return {
-        "status": "ok",
-        "app": "SanketSetu",
+        "status":      "ok",
         "model_loaded": model is not None,
-        "classes": list(label_encoder.classes_) if label_encoder else [],
+        "classes":     list(labelencoder.classes_) if labelencoder else [],
     }
-
-@app.get("/classes")
-async def get_classes():
-    if label_encoder is None:
-        raise HTTPException(status_code=503, detail="Models not loaded.")
-    return {"classes": list(label_encoder.classes_)}

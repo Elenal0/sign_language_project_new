@@ -82,7 +82,7 @@ def train_model() -> None:
     MODELSDIR.mkdir(parents=True, exist_ok=True)
     model_path = MODELSDIR / "sign_language_model.pkl"
     joblib.dump(final_pipe, model_path)
-    print(f"\n  Model saved → {model_path.resolve()}")
+    print(f"\n  Model saved -> {model_path.resolve()}")
 
 
 if __name__ == "__main__":

@@ -1,108 +1,180 @@
 import { Link, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Menu, Sun, Moon, Activity } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, X, Sun, Moon, Activity } from 'lucide-react'
+import { useState } from 'react'
 
 const NAV_LINKS = [
-  { to: '/',           label: 'Home' },
-  { to: '/translate',  label: 'Translate' },
+  { to: '/', label: 'Home' },
+  { to: '/translate', label: 'Translate' },
   { to: '/dictionary', label: 'Dictionary' },
-  { to: '/learn',      label: 'Learn' },
-  { to: '/history',    label: 'History' },
-  { to: '/dashboard',  label: 'Dashboard' },
+  { to: '/learn', label: 'Learn' },
+  { to: '/history', label: 'History' },
+  { to: '/dashboard', label: 'Analytics' },
 ]
 
 export default function Navbar() {
-  const { pathname } = useLocation()
-  const { setSidebarOpen, theme, toggleTheme } = useApp()
+  const { theme, toggleTheme } = useApp()
+  const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <header style={{
-      position: 'sticky', top: 0, zIndex: 50,
-      borderBottom: '1px solid rgba(255,255,255,0.07)',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      background: theme === 'dark'
-        ? 'rgba(10,10,18,0.85)'
-        : 'rgba(248,249,252,0.92)',
-    }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 1rem', height: 56, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <header
+      className="sticky top-0 z-40 w-full glass"
+      style={{ borderBottom: '1px solid var(--border)' }}
+    >
+      <div className="flex h-14 items-center justify-between px-4 md:px-6 max-w-screen-2xl mx-auto">
 
-        {/* Hamburger — mobile */}
-        <button
-          onClick={() => setSidebarOpen(s => !s)}
-          aria-label="Open menu"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', cursor: 'pointer', color: 'inherit' }}
-          className="lg:hidden"
-        >
-          <Menu size={18} />
-        </button>
+        {/* Logo + Brand */}
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2.5 group" aria-label="SanketSetu Home">
+            <motion.svg
+              width="28" height="28" viewBox="0 0 28 28" fill="none"
+              aria-hidden="true" className="shrink-0"
+              whileHover={{ rotate: [0, -8, 8, 0] }}
+              transition={{ duration: 0.5 }}
+            >
+              <rect width="28" height="28" rx="8" fill="var(--accent-soft)" />
+              <path
+                d="M8 18V12a1.5 1.5 0 0 1 3 0v3m0-3V10a1.5 1.5 0 0 1 3 0v5m0-4a1.5 1.5 0 0 1 3 0v4m0-3a1.5 1.5 0 0 1 3 0v5c0 2.21-1.79 4-4 4h-2a5 5 0 0 1-5-5v-1"
+                stroke="var(--accent)"
+                strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+              />
+            </motion.svg>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '-0.02em' }}>
+              Sanket<span className="gradient-text" style={{ fontWeight: 700 }}>Setu</span>
+            </span>
+          </Link>
+        </div>
 
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Activity size={16} color="#fff" strokeWidth={2.5} />
-          </div>
-          <span style={{
-            fontWeight: 700, fontSize: '1rem', letterSpacing: '-0.02em',
-            color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
-          }}>
-            SanketSetu
-          </span>
-        </Link>
-
-        {/* Nav links — desktop */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 16, flex: 1 }} className="hidden lg:flex">
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
           {NAV_LINKS.map(({ to, label }) => {
-            const active = pathname === to
+            const active = location.pathname === to
             return (
-              <Link key={to} to={to} style={{ textDecoration: 'none' }}>
-                <motion.span
-                  whileHover={{ backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}
-                  style={{
-                    display: 'block', padding: '5px 12px', borderRadius: 8,
-                    fontSize: '0.82rem', fontWeight: active ? 600 : 400,
-                    color: active
-                      ? (theme === 'dark' ? '#e2e8f0' : '#0f172a')
-                      : (theme === 'dark' ? '#64748b' : '#64748b'),
-                    background: active
-                      ? (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
-                      : 'transparent',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {label}
-                </motion.span>
+              <Link
+                key={to}
+                to={to}
+                className="relative px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+                style={{
+                  color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                  background: active ? 'var(--accent-soft)' : 'transparent',
+                }}
+              >
+                {label}
+                {active && (
+                  <motion.div
+                    layoutId="nav-indicator"
+                    style={{
+                      position: 'absolute', bottom: -1, left: '20%', right: '20%',
+                      height: 2, borderRadius: 1, background: 'var(--accent)',
+                    }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
               </Link>
             )
           })}
         </nav>
 
-        {/* Right side — theme toggle */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Right: Theme toggle + AI indicator */}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--green)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--green)' }} aria-hidden="true" />
+            <Activity size={12} />
+            <span>AI Ready</span>
+          </div>
+
+          {/* Theme toggle with animation */}
           <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.93 }}
             onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            className="p-2 rounded-lg transition-colors"
             style={{
-              width: 36, height: 36, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: theme === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-              border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+              color: 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
               cursor: 'pointer',
-              color: theme === 'dark' ? '#94a3b8' : '#475569',
-              transition: 'all 0.18s',
             }}
+            whileHover={{ scale: 1.1, background: 'var(--accent-soft)' }}
+            whileTap={{ scale: 0.9 }}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={theme}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                transition={{ duration: 0.2 }}
+              >
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              </motion.div>
+            </AnimatePresence>
           </motion.button>
+
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle mobile menu"
+            aria-expanded={mobileOpen}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={mobileOpen ? 'close' : 'open'}
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {mobileOpen ? <X size={16} /> : <Menu size={16} />}
+              </motion.div>
+            </AnimatePresence>
+          </button>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.nav
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="md:hidden overflow-hidden"
+            style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}
+            aria-label="Mobile navigation"
+          >
+            <div className="px-4 pb-4 pt-2">
+              {NAV_LINKS.map(({ to, label }, i) => {
+                const active = location.pathname === to
+                return (
+                  <motion.div
+                    key={to}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05, duration: 0.2 }}
+                  >
+                    <Link
+                      to={to}
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-3 py-2.5 rounded-lg text-sm font-medium mb-1 transition-colors"
+                      style={{
+                        color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                        background: active ? 'var(--accent-soft)' : 'transparent',
+                      }}
+                    >
+                      {label}
+                    </Link>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

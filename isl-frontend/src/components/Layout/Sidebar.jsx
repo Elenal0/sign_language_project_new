@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, Cpu,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
+import { useState, useEffect } from 'react'
 
 const NAV = [
   { to: '/',           icon: Home,          label: 'Home'       },
@@ -19,28 +20,36 @@ const NAV = [
 export default function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useApp()
   const location = useLocation()
+  const [apiOnline, setApiOnline] = useState(false)
+
+  useEffect(() => {
+    fetch('/health').then(r => r.ok && setApiOnline(true)).catch(() => setApiOnline(false))
+    const interval = setInterval(() => {
+      fetch('/health').then(r => r.ok ? setApiOnline(true) : setApiOnline(false)).catch(() => setApiOnline(false))
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <motion.aside
       animate={{ width: sidebarOpen ? 220 : 64 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-      style={{ background: '#10101a', borderRight: '1px solid rgba(255,255,255,0.05)' }}
-      className="relative flex flex-col h-full shrink-0 overflow-hidden"
+      className="relative hidden md:flex flex-col h-full shrink-0 overflow-hidden"
+      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)' }}
     >
       {/* Logo */}
       <div
         className="flex items-center gap-3 px-4 py-5"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+        style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <div
+        <motion.div
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: 'rgba(0,196,204,0.15)',
-            border: '1px solid rgba(0,196,204,0.3)',
-          }}
+          style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <Hand className="w-5 h-5" style={{ color: '#00c4cc' }} />
-        </div>
+          <Hand className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+        </motion.div>
 
         <AnimatePresence>
           {sidebarOpen && (
@@ -50,10 +59,10 @@ export default function Sidebar() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
             >
-              <p style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+              <p style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
                 SanketSetu
               </p>
-              <p style={{ color: '#00c4cc', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+              <p style={{ color: 'var(--accent)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
                 v2.0 · SPIT AI Lab
               </p>
             </motion.div>
@@ -75,13 +84,13 @@ export default function Sidebar() {
               style={{ textDecoration: 'none' }}
             >
               <motion.div
-                whileHover={{ x: 2 }}
+                whileHover={{ x: 3 }}
                 whileTap={{ scale: 0.97 }}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
                 style={{
-                  background: active ? 'rgba(0,196,204,0.1)'  : 'transparent',
-                  border:     active ? '1px solid rgba(0,196,204,0.2)' : '1px solid transparent',
-                  color:      active ? '#00c4cc' : '#64748b',
+                  background: active ? 'var(--accent-soft)' : 'transparent',
+                  border: active ? '1px solid var(--accent-border)' : '1px solid transparent',
+                  color: active ? 'var(--accent)' : 'var(--text-muted)',
                 }}
               >
                 <Icon size={17} className="shrink-0" />
@@ -93,10 +102,8 @@ export default function Sidebar() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       style={{
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                        color: active ? '#00c4cc' : '#94a3b8',
+                        fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap',
+                        color: active ? 'var(--accent)' : 'var(--text-secondary)',
                       }}
                     >
                       {label}
@@ -109,16 +116,22 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Model Status */}
-      <div className="p-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      {/* Model Status — real /health */}
+      <div className="p-2" style={{ borderTop: '1px solid var(--border)' }}>
         <div
           className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-          style={{ background: '#161622' }}
-          title={!sidebarOpen ? 'Model Online · 99.7%' : undefined}
+          style={{ background: 'var(--bg-panel)' }}
+          title={!sidebarOpen ? (apiOnline ? 'Model Online' : 'Model Offline') : undefined}
         >
           <div className="relative shrink-0">
-            <Cpu size={15} style={{ color: '#4ade80' }} />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <Cpu size={15} style={{ color: apiOnline ? 'var(--green)' : 'var(--red)' }} />
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+              style={{
+                background: apiOnline ? 'var(--green)' : 'var(--red)',
+                animation: apiOnline ? 'pulse 2s infinite' : 'none',
+              }}
+            />
           </div>
           <AnimatePresence>
             {sidebarOpen && (
@@ -127,11 +140,11 @@ export default function Sidebar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <p style={{ fontSize: '0.7rem', fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap' }}>
-                  Model Online
+                <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                  {apiOnline ? 'Model Online' : 'Model Offline'}
                 </p>
-                <p style={{ fontSize: '0.65rem', color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                  99.7% accuracy
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {apiOnline ? '99.7% accuracy' : 'Start backend'}
                 </p>
               </motion.div>
             )}
@@ -140,15 +153,17 @@ export default function Sidebar() {
       </div>
 
       {/* Collapse Toggle */}
-      <button
+      <motion.button
         onClick={() => setSidebarOpen(o => !o)}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full flex items-center justify-center hover:scale-110 transition-transform z-10"
-        style={{ background: '#1c1c2e', border: '1px solid rgba(255,255,255,0.1)' }}
+        className="absolute -right-3 top-20 w-6 h-6 rounded-full flex items-center justify-center z-10"
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer' }}
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
       >
         {sidebarOpen
-          ? <ChevronLeft  size={11} style={{ color: '#64748b' }} />
-          : <ChevronRight size={11} style={{ color: '#64748b' }} />}
-      </button>
+          ? <ChevronLeft  size={11} style={{ color: 'var(--text-muted)' }} />
+          : <ChevronRight size={11} style={{ color: 'var(--text-muted)' }} />}
+      </motion.button>
     </motion.aside>
   )
 }

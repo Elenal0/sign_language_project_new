@@ -3,3 +3,5 @@ venv310/
 __pycache__/
 *.pyc
 .env
+backend.err.log
+backend.out.log

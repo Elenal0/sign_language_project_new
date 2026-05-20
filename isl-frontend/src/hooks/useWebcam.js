@@ -1,29 +1,40 @@
+// isl-frontend/src/hooks/useWebcam.js
+
 import { useRef, useState, useCallback, useEffect } from 'react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const TARGET_FPS = 10
-const FRAME_INTERVAL = 1000 / TARGET_FPS
+// Empty string = relative URL — Vite proxy routes it to localhost:8000
+// Works on both PC (localhost:5173) and Android (192.168.x.x:5173)
+const API_URL = ''
+const DEFAULT_FPS   = 4
+const CALL_FPS      = 2   // halved during active WebRTC call to free CPU for video encoding
+const DEFAULT_JPEG  = 0.7
+const CALL_JPEG     = 0.5  // lower quality during call reduces encode CPU further
 
 export function useWebcam() {
-  const videoRef   = useRef(null)
-  const canvasRef  = useRef(null)
-  const streamRef  = useRef(null)
-  const rafRef     = useRef(null)
-  const lastTickRef = useRef(0)
+  const videoRef          = useRef(null)
+  const canvasRef         = useRef(null)
+  const streamRef         = useRef(null)
+  const timerRef          = useRef(null)             // setTimeout handle
+  const lastTickRef       = useRef(0)
+  const isDetectingRef    = useRef(false)
+  const frameIntervalRef  = useRef(1000 / DEFAULT_FPS)  // dynamic — updated by setDetectionFps
+  const jpegQualityRef    = useRef(DEFAULT_JPEG)         // dynamic — lowered during calls
 
-  const [isActive,    setIsActive]    = useState(false)
-  const [isDetecting, setIsDetecting] = useState(false)
-  const [error,       setError]       = useState(null)
-  const [fps,         setFps]         = useState(0)
-  const [prediction,  setPrediction]  = useState(null)  // { sign, confidence, all_scores, hand_detected, inference_ms }
+  const [isActive,     setIsActive]     = useState(false)
+  const [error,        setError]        = useState(null)
+  const [fps,          setFps]          = useState(0)
+  const [prediction,   setPrediction]   = useState(null)
   const [backendReady, setBackendReady] = useState(false)
+  const [isDetecting,  setIsDetecting]  = useState(false)
 
   // Check backend health on mount
   useEffect(() => {
+    let cancelled = false
     fetch(`${API_URL}/health`)
       .then(r => r.json())
-      .then(d => setBackendReady(d.model_loaded === true))
-      .catch(() => setBackendReady(false))
+      .then(d => { if (!cancelled) setBackendReady(d.model_loaded === true) })
+      .catch(() => { if (!cancelled) setBackendReady(false) })
+    return () => { cancelled = true }
   }, [])
 
   const captureFrame = useCallback(() => {
@@ -35,9 +46,7 @@ export function useWebcam() {
     canvas.height = video.videoHeight || 480
     const ctx = canvas.getContext('2d')
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Return base64 without the "data:image/jpeg;base64," prefix
-    return canvas.toDataURL('image/jpeg', 0.7).split(',')[1]
+    return canvas.toDataURL('image/jpeg', jpegQualityRef.current).split(',')[1]
   }, [])
 
   const sendFrame = useCallback(async (base64) => {
@@ -51,41 +60,59 @@ export function useWebcam() {
       const data = await res.json()
       setPrediction(data)
     } catch {
-      // silently skip on network error — don't crash detection loop
+      // silently skip — don't crash the detection loop
     }
   }, [])
 
-  const detectionLoop = useCallback((timestamp) => {
-    if (!isDetecting) return
-    rafRef.current = requestAnimationFrame(detectionLoop)
+  // ── Detection loop via setTimeout (non-blocking, no rAF competition with WebRTC) ──
+  const detectionTick = useCallback(async () => {
+    if (!isDetectingRef.current) return
 
-    const elapsed = timestamp - lastTickRef.current
-    if (elapsed < FRAME_INTERVAL) return
-    lastTickRef.current = timestamp
-
-    // FPS counter
-    setFps(Math.round(1000 / elapsed))
-
+    const t0 = performance.now()
     const frame = captureFrame()
-    if (frame) sendFrame(frame)
-  }, [isDetecting, captureFrame, sendFrame])
+    if (frame) await sendFrame(frame)
+    const elapsed = performance.now() - t0
 
-  // Start/stop detection loop when isDetecting changes
-  useEffect(() => {
-    if (isDetecting) {
-      lastTickRef.current = 0
-      rafRef.current = requestAnimationFrame(detectionLoop)
-    } else {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    // Compute display FPS based on actual interval
+    const interval = frameIntervalRef.current
+    setFps(Math.min(Math.round(1000 / interval), Math.round(1000 / Math.max(elapsed, 1))))
+
+    // Schedule next tick — subtract processing time to stay on target
+    if (isDetectingRef.current) {
+      timerRef.current = setTimeout(detectionTick, Math.max(0, interval - elapsed))
     }
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [isDetecting, detectionLoop])
+  }, [captureFrame, sendFrame])
 
-  const start = useCallback(async () => {
+  const startDetection = useCallback(() => {
+    if (!streamRef.current || isDetectingRef.current) return false
+    isDetectingRef.current = true
+    lastTickRef.current = 0
+    setIsDetecting(true)
+    detectionTick()   // kick off the loop
+    return true
+  }, [detectionTick])
+
+  const stopDetection = useCallback(() => {
+    isDetectingRef.current = false
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setIsDetecting(false)
+    setFps(0)
+  }, [])
+
+  const start = useCallback(async (options = {}) => {
+    const detect = options.detect !== false
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        video: {
+          width:       { ideal: 480 },
+          height:      { ideal: 360 },
+          facingMode:  'user',
+          frameRate:   { ideal: 20, max: 24 },  // limit source fps → less WebRTC encode CPU
+        },
       })
       streamRef.current = stream
       if (videoRef.current) {
@@ -93,30 +120,38 @@ export function useWebcam() {
         await videoRef.current.play()
       }
       setIsActive(true)
-      setIsDetecting(true)
+      if (detect) startDetection()
+      return true
     } catch (err) {
       setError(err.message || 'Camera access denied')
+      return false
     }
-  }, [])
+  }, [startDetection])
 
   const stop = useCallback(() => {
-    setIsDetecting(false)
-    setIsActive(false)
-    setPrediction(null)
-    setFps(0)
+    stopDetection()
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
     }
     if (videoRef.current) videoRef.current.srcObject = null
-  }, [])
+    setIsActive(false)
+    setPrediction(null)
+  }, [stopDetection])
 
-  const stopDetection = useCallback(() => setIsDetecting(false), [])
+  // Expose the raw stream so useVideoCall can use it for peer connection
+  const getStream = useCallback(() => streamRef.current, [])
+
+  // Called by Translator when call status changes to throttle detection and save CPU
+  const setDetectionFps = useCallback((fps) => {
+    frameIntervalRef.current = 1000 / fps
+    jpegQualityRef.current   = fps <= CALL_FPS ? CALL_JPEG : DEFAULT_JPEG
+  }, [])
 
   return {
     videoRef, canvasRef,
     isActive, isDetecting, error, fps,
     prediction, backendReady,
-    start, stop, stopDetection,
+    start, stop, startDetection, stopDetection, getStream, setDetectionFps,
   }
 }
