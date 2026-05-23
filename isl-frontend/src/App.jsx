@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import NotFound from './pages/NotFound'
 import AnimatedToast from './components/AnimatedToast'
 import CommandPalette from './components/CommandPalette'
+import HandCursor from './components/HandCursor'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
       </Routes>
       <AnimatedToast />
       <CommandPalette />
+      <HandCursor />
     </>
   )
 }

@@ -34,12 +34,17 @@ export default function Sidebar() {
     <motion.aside
       animate={{ width: sidebarOpen ? 220 : 64 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-      className="relative hidden md:flex flex-col h-full shrink-0 overflow-hidden"
-      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)' }}
+      className="relative hidden md:flex flex-col h-full shrink-0"
+      style={{
+        background: 'var(--sidebar-bg)',
+        borderRight: '1px solid var(--border)',
+        // overflow must be visible so the -right-3 toggle button isn't clipped
+        overflow: 'visible',
+      }}
     >
-      {/* Logo */}
+      {/* Logo — overflow-hidden here clips the expanding text, not the toggle */}
       <div
-        className="flex items-center gap-3 px-4 py-5"
+        className="flex items-center gap-3 px-4 py-5 overflow-hidden"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
         <motion.div
@@ -60,10 +65,10 @@ export default function Sidebar() {
               transition={{ duration: 0.18 }}
             >
               <p style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-                SanketSetu
+                Drishya Vaani
               </p>
               <p style={{ color: 'var(--accent)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                v2.0 · SPIT AI Lab
+                v2.0 · ISL Bridge
               </p>
             </motion.div>
           )}
@@ -152,17 +157,23 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Collapse Toggle */}
+      {/* Collapse Toggle — absolutely positioned, hangs off the right edge */}
       <motion.button
         onClick={() => setSidebarOpen(o => !o)}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full flex items-center justify-center z-10"
-        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer' }}
-        whileHover={{ scale: 1.2 }}
+        className="absolute -right-3.5 top-20 w-7 h-7 rounded-full flex items-center justify-center"
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1.5px solid var(--border)',
+          cursor: 'pointer',
+          zIndex: 50,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+        }}
+        whileHover={{ scale: 1.2, boxShadow: '0 0 10px var(--accent-glow)' }}
         whileTap={{ scale: 0.9 }}
       >
         {sidebarOpen
-          ? <ChevronLeft  size={11} style={{ color: 'var(--text-muted)' }} />
-          : <ChevronRight size={11} style={{ color: 'var(--text-muted)' }} />}
+          ? <ChevronLeft  size={12} style={{ color: 'var(--text-secondary)' }} />
+          : <ChevronRight size={12} style={{ color: 'var(--text-secondary)' }} />}
       </motion.button>
     </motion.aside>
   )

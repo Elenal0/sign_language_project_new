@@ -8,7 +8,7 @@ export default function Layout() {
   const location = useLocation()
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex h-screen" style={{ background: 'var(--bg-base)', overflow: 'hidden' }}>
       {/* Animated background mesh */}
       <div
         style={{
@@ -17,7 +17,10 @@ export default function Layout() {
         }}
       />
 
-      <Sidebar />
+      {/* Sidebar sits in its own stacking context so the toggle button isn't clipped */}
+      <div className="relative z-20 h-full">
+        <Sidebar />
+      </div>
       <div className="flex flex-col flex-1 min-w-0 relative z-10">
         <Navbar />
         <main className="flex-1 overflow-y-auto">

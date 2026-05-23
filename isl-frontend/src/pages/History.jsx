@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Download, Bookmark, Trash2, Clock, CheckCircle2, ChevronDown, Filter } from 'lucide-react'
+import { Search, Download, Bookmark, Trash2, Clock, CheckCircle2, History as HistoryIcon } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 function relTime(iso) {
@@ -149,7 +149,7 @@ export default function History() {
       <div>
         {history.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
-            <History size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+            <HistoryIcon size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
             <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No history yet</p>
             <p style={{ fontSize: '0.85rem', marginTop: 4 }}>Translations will automatically save here.</p>
           </div>

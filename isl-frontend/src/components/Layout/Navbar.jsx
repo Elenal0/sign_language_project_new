@@ -27,7 +27,7 @@ export default function Navbar() {
 
         {/* Logo + Brand */}
         <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2.5 group" aria-label="SanketSetu Home">
+          <Link to="/" className="flex items-center gap-2.5 group" aria-label="Drishya Vaani Home">
             <motion.svg
               width="28" height="28" viewBox="0 0 28 28" fill="none"
               aria-hidden="true" className="shrink-0"
@@ -41,8 +41,9 @@ export default function Navbar() {
                 strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
               />
             </motion.svg>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '-0.02em' }}>
-              Sanket<span className="gradient-text" style={{ fontWeight: 700 }}>Setu</span>
+            <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.02em' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Drishya</span>
+              <span style={{ color: 'var(--accent)' }}> Vaani</span>
             </span>
           </Link>
         </div>
