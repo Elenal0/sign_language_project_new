@@ -1,759 +1,672 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useInView, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion'
-import { useRef, useState, useEffect, useCallback } from 'react'
-import {
-  Video, BookOpen, GraduationCap, BarChart3, ArrowRight,
-  Cpu, Zap, Target, Shield, Globe, Accessibility, Clock, Sparkles
-} from 'lucide-react'
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import Lenis from 'lenis'
+import { Video, BookOpen, GraduationCap, BarChart3, ArrowRight, Zap, Shield, Cpu, Globe } from 'lucide-react'
+import CinematicScene from '../components/scene/CinematicScene'
 
-/* ─── Data ─────────────────────────────────────────────────────────────────── */
-const FEATURES = [
-  { icon: Video,         title: 'Live Translator',  desc: 'Real-time ISL gesture detection via webcam with sentence output.',   to: '/translate',  accent: 'var(--accent)' },
-  { icon: BookOpen,      title: 'Sign Dictionary',  desc: 'Browse all ISL signs with Hindi translations and hand guides.',      to: '/dictionary', accent: 'var(--blue)' },
-  { icon: GraduationCap, title: 'Learning Mode',    desc: 'Flashcards and quiz to practice ISL recognition with AI coaching.', to: '/learn',      accent: 'var(--yellow)' },
-  { icon: BarChart3,     title: 'Analytics',        desc: 'Confidence trends, per-category accuracy, and session stats.',      to: '/dashboard',  accent: 'var(--pink)' },
-]
+gsap.registerPlugin(ScrollTrigger)
 
-const HIGHLIGHTS = [
-  { icon: Zap,           title: 'Real-Time Inference',    desc: 'Predictions in under 80ms using local ML inference.' },
-  { icon: Shield,        title: 'Privacy First',          desc: 'All processing is local. No video ever leaves your device.' },
-  { icon: Cpu,           title: 'AI-Powered',             desc: 'MediaPipe hand tracking + MLP classifier on ISL data.' },
-  { icon: Globe,         title: 'Bilingual Output',       desc: 'Translated sentences in both English and Hindi.' },
-  { icon: Accessibility, title: 'Accessibility Focused',  desc: 'Built for the 63 million ISL users in India.' },
-  { icon: Clock,         title: 'Lightweight',            desc: 'Runs entirely in-browser. No GPU required.' },
-]
+/* ─────────────────────────────────────────────── helpers */
 
-const STATS = [
-  { label: 'ISL Users',      num: 63,   suffix: 'M+',  sub: 'Native signers',       prefix: '' },
-  { label: 'Accuracy',       num: 99.7, suffix: '%',   sub: 'Test set',              prefix: '' },
-  { label: 'Gestures',       num: 9,    suffix: '',    sub: 'Trained classes',        prefix: '' },
-  { label: 'Speed',          num: 80,   suffix: 'ms',  sub: 'Per frame CPU',         prefix: '<' },
-  { label: 'Samples',        num: 3240, suffix: '',    sub: 'With augmentation',      prefix: '' },
-  { label: 'Landmarks',      num: 252,  suffix: '',    sub: 'Features/prediction',    prefix: '' },
-]
-
-const ISL_SIGNS_RAIN = ['Hello', 'Thank you', 'How', 'You', 'I', 'Nice', 'Meet', 'Going', 'School',
-  'नमस्ते', 'धन्यवाद', 'कैसे', 'तुम', 'मैं', 'अच्छा', 'मिलना', '🤟', '👋', '✌️', '🙏']
-
-const HOW_IT_WORKS = [
-  { step: '01', title: 'Camera Capture', desc: 'Webcam stream sampled at 12 frames per second.' },
-  { step: '02', title: 'Hand Tracking',  desc: 'MediaPipe extracts 21 landmarks per detected hand.' },
-  { step: '03', title: 'ML Prediction', desc: 'Normalised landmarks fed into trained MLP classifier.' },
-  { step: '04', title: 'Text Output',   desc: 'Confirmed signs appended to live sentence in real time.' },
-]
-
-/* ─── Components ────────────────────────────────────────────────────────────── */
-
-/** Particle field rendered on canvas */
-function ParticleField() {
-  const canvasRef = useRef(null)
+/** Splits text into per-character spans for letter animation */
+function SplitChars({ text, style, charStyle, stagger = 0.04, delay = 0, once = true }) {
+  const ref = useRef(null)
+  const inView = useRef(false)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    let animId
-    let particles = []
-    let w, h
+    const chars = ref.current?.querySelectorAll('.sc')
+    if (!chars) return
 
-    const resize = () => {
-      w = canvas.width  = canvas.offsetWidth
-      h = canvas.height = canvas.offsetHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    // Create particles
-    for (let i = 0; i < 90; i++) {
-      particles.push({
-        x: Math.random() * (w || 800),
-        y: Math.random() * (h || 400),
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
-        r: Math.random() * 2.5 + 0.5,
-        opacity: Math.random() * 0.5 + 0.1,
-        hue: Math.random() > 0.7 ? '200, 200, 255' : '0, 196, 204',
-      })
-    }
-
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h)
-      // Connect nearby particles
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 120) {
-            ctx.beginPath()
-            ctx.strokeStyle = `rgba(0, 196, 204, ${0.15 * (1 - dist / 120)})`
-            ctx.lineWidth = 0.5
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.stroke()
-          }
-        }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && (!inView.current || !once)) {
+        inView.current = true
+        gsap.fromTo(chars,
+          { opacity: 0, y: 60, rotateX: -90, filter: 'blur(8px)' },
+          { opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)', duration: 0.7, stagger, delay, ease: 'back.out(1.8)' }
+        )
       }
-      // Draw particles
-      particles.forEach(p => {
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${p.hue}, ${p.opacity})`
-        ctx.fill()
-        // Glow
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${p.hue}, ${p.opacity * 0.15})`
-        ctx.fill()
-        // Move
-        p.x += p.vx; p.y += p.vy
-        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0
-        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0
-      })
-      animId = requestAnimationFrame(draw)
-    }
-    draw()
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize) }
-  }, [])
+    }, { threshold: 0.1 })
+
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [stagger, delay, once])
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-    />
+    <span ref={ref} style={{ display: 'inline-block', perspective: '600px', ...style }}>
+      {text.split('').map((ch, i) => (
+        <span key={i} className="sc" style={{ display: 'inline-block', opacity: 0, whiteSpace: 'pre', ...charStyle }}>
+          {ch}
+        </span>
+      ))}
+    </span>
   )
 }
 
-/** ISL signs falling like Matrix rain */
-function MatrixRain() {
-  const [drops, setDrops] = useState([])
+/** Floating magnetic button */
+function MagButton({ children, to, style }) {
+  const ref = useRef(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const sx = useSpring(x, { stiffness: 200, damping: 15 })
+  const sy = useSpring(y, { stiffness: 200, damping: 15 })
 
-  useEffect(() => {
-    const initial = Array.from({ length: 14 }, (_, i) => ({
-      id: i,
-      sign: ISL_SIGNS_RAIN[Math.floor(Math.random() * ISL_SIGNS_RAIN.length)],
-      x: 5 + (i / 14) * 90 + (Math.random() - 0.5) * 4,
-      delay: Math.random() * 4,
-      duration: 4 + Math.random() * 4,
-      size: 10 + Math.random() * 14,
-      opacity: 0.08 + Math.random() * 0.18,
-    }))
-    setDrops(initial)
-    const interval = setInterval(() => {
-      setDrops(prev => prev.map(d =>
-        Math.random() < 0.3
-          ? { ...d, sign: ISL_SIGNS_RAIN[Math.floor(Math.random() * ISL_SIGNS_RAIN.length)] }
-          : d
-      ))
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+  const onMove = (e) => {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    x.set((e.clientX - r.left - r.width  / 2) * 0.4)
+    y.set((e.clientY - r.top  - r.height / 2) * 0.4)
+  }
+  const onLeave = () => { x.set(0); y.set(0) }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      {drops.map(drop => (
-        <motion.div
-          key={drop.id}
-          initial={{ y: '-10%', opacity: 0 }}
-          animate={{ y: '110%', opacity: [0, drop.opacity, drop.opacity, 0] }}
-          transition={{ duration: drop.duration, delay: drop.delay, repeat: Infinity, ease: 'linear' }}
-          style={{
-            position: 'absolute',
-            left: `${drop.x}%`,
-            top: 0,
-            fontSize: drop.size,
-            color: 'var(--accent)',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 700,
-            textShadow: '0 0 8px var(--accent)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {drop.sign}
-        </motion.div>
-      ))}
+    <Link to={to} style={{ textDecoration: 'none' }}>
+      <motion.button
+        ref={ref}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        style={{ x: sx, y: sy, ...style }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {children}
+      </motion.button>
+    </Link>
+  )
+}
+
+/** Animated counter that counts up when visible */
+function Counter({ value, suffix = '', prefix = '' }) {
+  const [display, setDisplay] = useState(0)
+  const ref = useRef(null)
+  const started = useRef(false)
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true
+        gsap.to({ val: 0 }, {
+          val: value,
+          duration: 2,
+          ease: 'power2.out',
+          onUpdate: function () { setDisplay(Math.round(this.targets()[0].val)) },
+        })
+      }
+    }, { threshold: 0.3 })
+    if (ref.current) obs.observe(ref.current)
+    return () => obs.disconnect()
+  }, [value])
+
+  return (
+    <span ref={ref} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+      {prefix}{display}{suffix}
+    </span>
+  )
+}
+
+/** Infinite horizontal marquee */
+function Marquee({ items }) {
+  return (
+    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', padding: '1rem 0', borderTop: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <motion.div
+        animate={{ x: ['0%', '-50%'] }}
+        transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+        style={{ display: 'inline-flex', gap: '3rem', alignItems: 'center' }}
+      >
+        {[...items, ...items].map((item, i) => (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.25)' }}>
+            <span style={{ color: '#c084fc', fontSize: '0.6rem' }}>◆</span>
+            {item}
+          </span>
+        ))}
+      </motion.div>
     </div>
   )
 }
 
-/** Morphing glow blob */
-function GlowBlob({ color, x, y, size, delay = 0 }) {
-  return (
-    <motion.div
-      animate={{
-        scale: [1, 1.4, 0.9, 1.2, 1],
-        x: [0, 30, -20, 15, 0],
-        y: [0, -20, 30, -10, 0],
-        borderRadius: ['40% 60% 70% 30% / 40% 50% 60% 50%', '60% 40% 30% 70% / 60% 30% 70% 40%', '30% 60% 70% 40% / 50% 60% 30% 60%', '60% 40% 30% 70% / 30% 60% 70% 40%', '40% 60% 70% 30% / 40% 50% 60% 50%'],
-      }}
-      transition={{ duration: 10, delay, repeat: Infinity, ease: 'easeInOut' }}
-      style={{
-        position: 'absolute', left: x, top: y,
-        width: size, height: size,
-        background: color,
-        filter: `blur(${size / 2}px)`,
-        opacity: 0.35,
-        pointerEvents: 'none',
-      }}
-    />
-  )
-}
+const MARQUEE_ITEMS = [
+  'Indian Sign Language', 'Real-Time Translation', 'MediaPipe Hand Tracking',
+  'MLP Classifier', '63 Million Users', 'Privacy First', 'Edge AI',
+  'WebGL Experience', 'No Cloud Required', 'Bilingual Output',
+]
 
-/** Glitch text effect */
-function GlitchText({ children, style }) {
-  const [glitching, setGlitching] = useState(false)
+const FEATURES = [
+  { icon: Video,         title: 'Live Translator',  desc: 'Real-time ISL gesture recognition via webcam.',    to: '/translate',  color: '#c084fc', num: '01' },
+  { icon: BookOpen,      title: 'Sign Dictionary',  desc: 'Browse all ISL signs with Hindi translations.',    to: '/dictionary', color: '#38bdf8', num: '02' },
+  { icon: GraduationCap, title: 'Learning Mode',    desc: 'AI-coached flashcards and ISL quiz system.',       to: '/learn',      color: '#facc15', num: '03' },
+  { icon: BarChart3,     title: 'Analytics',        desc: 'Accuracy trends, session stats, and insights.',    to: '/dashboard',  color: '#f472b6', num: '04' },
+]
 
-  useEffect(() => {
-    const trigger = () => {
-      setGlitching(true)
-      setTimeout(() => setGlitching(false), 300)
-    }
-    const interval = setInterval(trigger, 3000 + Math.random() * 2000)
-    return () => clearInterval(interval)
-  }, [])
+const STATS = [
+  { label: 'ISL Users',   value: 63,   suffix: 'M+',  sub: 'Native signers in India' },
+  { label: 'Accuracy',    value: 99,   suffix: '.7%', sub: 'On classification test set' },
+  { label: 'Latency',     value: 80,   suffix: 'ms',  sub: 'Per prediction, in-browser', prefix: '<' },
+  { label: 'Landmarks',   value: 252,  suffix: '',    sub: 'Features per prediction' },
+]
 
-  return (
-    <span style={{ position: 'relative', display: 'inline-block', ...style }}>
-      {children}
-      {glitching && (
-        <>
-          <span style={{
-            position: 'absolute', inset: 0, color: '#00ffff',
-            clipPath: 'polygon(0 30%, 100% 30%, 100% 50%, 0 50%)',
-            transform: 'translateX(-3px)', opacity: 0.8,
-            animation: 'none',
-          }}>{children}</span>
-          <span style={{
-            position: 'absolute', inset: 0, color: '#ff00ff',
-            clipPath: 'polygon(0 55%, 100% 55%, 100% 70%, 0 70%)',
-            transform: 'translateX(3px)', opacity: 0.8,
-          }}>{children}</span>
-        </>
-      )}
-    </span>
-  )
-}
+const PILLARS = [
+  { icon: Zap,    title: 'Instant',    desc: 'Under 80ms from hand movement to text output — faster than the human eye.' },
+  { icon: Shield, title: 'Private',    desc: 'No video ever leaves your device. All ML inference runs locally.' },
+  { icon: Cpu,    title: 'AI-Native',  desc: 'MediaPipe landmarks feed a trained MLP classifier for maximum accuracy.' },
+  { icon: Globe,  title: 'Inclusive',  desc: 'Designed for the 63 million ISL users often left out of digital tools.' },
+]
 
-/** Mouse-tracking parallax container */
-function ParallaxContainer({ children }) {
-  const containerRef = useRef(null)
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [4, -4]), { stiffness: 80, damping: 20 })
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-4, 4]), { stiffness: 80, damping: 20 })
-
-  const handleMouseMove = useCallback((e) => {
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    mouseX.set((e.clientX - rect.left) / rect.width - 0.5)
-    mouseY.set((e.clientY - rect.top)  / rect.height - 0.5)
-  }, [mouseX, mouseY])
-
-  const handleMouseLeave = useCallback(() => {
-    mouseX.set(0); mouseY.set(0)
-  }, [mouseX, mouseY])
-
-  return (
-    <motion.div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ rotateX, rotateY, transformStyle: 'preserve-3d', perspective: 1200 }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-/** Magnetic button */
-function MagneticButton({ children, className, style, onClick, href }) {
-  const ref = useRef(null)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const springX = useSpring(x, { stiffness: 300, damping: 15 })
-  const springY = useSpring(y, { stiffness: 300, damping: 15 })
-
-  const handleMove = (e) => {
-    const rect = ref.current?.getBoundingClientRect()
-    if (!rect) return
-    const cx = rect.left + rect.width / 2
-    const cy = rect.top + rect.height / 2
-    x.set((e.clientX - cx) * 0.35)
-    y.set((e.clientY - cy) * 0.35)
-  }
-  const handleLeave = () => { x.set(0); y.set(0) }
-
-  const Tag = href ? motion.a : motion.button
-
-  return (
-    <Tag
-      ref={ref}
-      href={href}
-      onClick={onClick}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-      style={{ x: springX, y: springY, ...style }}
-      className={className}
-      whileTap={{ scale: 0.93 }}
-    >
-      {children}
-    </Tag>
-  )
-}
-
-/** Animated counter */
-function AnimatedCounter({ value, suffix = '', prefix = '', duration = 2 }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-50px' })
-  const [display, setDisplay] = useState(0)
-
-  useEffect(() => {
-    if (!inView) return
-    let start = 0
-    const end = value
-    const step = end / (duration * 60)
-    const timer = setInterval(() => {
-      start += step
-      if (start >= end) { setDisplay(end); clearInterval(timer) }
-      else setDisplay(start)
-    }, 1000 / 60)
-    return () => clearInterval(timer)
-  }, [inView, value, duration])
-
-  const formatted = Number.isInteger(value)
-    ? Math.round(display).toLocaleString()
-    : display.toFixed(1)
-
-  return (
-    <span ref={ref} style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
-      {prefix}{formatted}{suffix}
-    </span>
-  )
-}
-
-/** Section reveal */
-function Reveal({ children, delay = 0, direction = 'up' }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-60px' })
-  const variants = {
-    hidden: {
-      opacity: 0,
-      y: direction === 'up' ? 32 : direction === 'down' ? -32 : 0,
-      x: direction === 'left' ? 32 : direction === 'right' ? -32 : 0,
-      scale: 0.95,
-    },
-    show: { opacity: 1, y: 0, x: 0, scale: 1, transition: { delay, duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
-  }
-  return (
-    <motion.div ref={ref} variants={variants} initial="hidden" animate={inView ? 'show' : 'hidden'}>
-      {children}
-    </motion.div>
-  )
-}
-
-/* ─── Main Page ─────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────── main */
 export default function Home() {
-  const [heroVisible, setHeroVisible] = useState(false)
-  const [typeText, setTypeText] = useState('')
-  const fullText = 'Indian Sign Language Bridge'
-  const [scanLine, setScanLine] = useState(0)
+  const containerRef = useRef(null)
+  const [scrollPct, setScrollPct] = useState(0)
 
-  // Entrance
   useEffect(() => {
-    const t = setTimeout(() => setHeroVisible(true), 100)
-    return () => clearTimeout(t)
-  }, [])
+    const scrollEl = document.getElementById('main-scroll')
+    if (!scrollEl) return
 
-  // Typewriter
-  useEffect(() => {
-    if (!heroVisible) return
-    let i = 0
-    const timer = setInterval(() => {
-      setTypeText(fullText.slice(0, i))
-      i++
-      if (i > fullText.length) clearInterval(timer)
-    }, 55)
-    return () => clearInterval(timer)
-  }, [heroVisible])
+    // Lenis smooth scroll
+    const lenis = new Lenis({
+      wrapper: scrollEl,
+      content: scrollEl.firstElementChild,
+      duration: 1.4,
+      easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    })
 
-  // Scan line
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setScanLine(v => (v + 1) % 100)
-    }, 20)
-    return () => clearInterval(interval)
+    let rafId
+    const raf = time => { lenis.raf(time); rafId = requestAnimationFrame(raf) }
+    rafId = requestAnimationFrame(raf)
+    lenis.on('scroll', ScrollTrigger.update)
+    ScrollTrigger.defaults({ scroller: scrollEl })
+
+    // Scroll progress bar
+    const onScroll = () => {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight
+      setScrollPct(max > 0 ? (scrollEl.scrollTop / max) * 100 : 0)
+    }
+    scrollEl.addEventListener('scroll', onScroll, { passive: true })
+
+    // Hero fade out
+    gsap.to('.home-hero-inner', {
+      opacity: 0, y: -60,
+      scrollTrigger: { trigger: '.home-hero', start: 'top top', end: '70% top', scrub: 1.5 },
+    })
+
+    // Feature cards — cinematic slide-in from alternating sides
+    gsap.utils.toArray('.feat-card').forEach((el, i) => {
+      gsap.fromTo(el,
+        { x: i % 2 === 0 ? -120 : 120, opacity: 0, rotateY: i % 2 === 0 ? -25 : 25 },
+        {
+          x: 0, opacity: 1, rotateY: 0,
+          scrollTrigger: { trigger: el, start: 'top 85%', end: 'top 40%', scrub: 1.2 },
+        }
+      )
+    })
+
+    // Stat cards pop up
+    gsap.utils.toArray('.stat-card').forEach((el, i) => {
+      gsap.fromTo(el,
+        { scale: 0.5, opacity: 0, y: 80 },
+        {
+          scale: 1, opacity: 1, y: 0,
+          scrollTrigger: { trigger: el, start: 'top 90%', end: 'top 55%', scrub: 1 },
+          delay: i * 0.05,
+        }
+      )
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      lenis.destroy()
+      ScrollTrigger.getAll().forEach(t => t.kill())
+      ScrollTrigger.defaults({ scroller: undefined })
+      scrollEl.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   return (
-    <div style={{ padding: '1.5rem', minHeight: '100%', overflowX: 'hidden' }}>
+    <div ref={containerRef} style={{ background: '#0a0614', color: '#fff', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          HERO
-      ══════════════════════════════════════════════════════════════════ */}
-      <ParallaxContainer>
-        <div
-          style={{
-            position: 'relative', borderRadius: 24, overflow: 'hidden',
-            marginBottom: 32, minHeight: 440,
-            border: '1px solid var(--accent-border)',
-            background: 'var(--bg-panel)',
-            transformStyle: 'preserve-3d',
-          }}
-        >
-          {/* Particle field */}
-          <ParticleField />
+      {/* ── 3D Background ── */}
+      <CinematicScene />
 
-          {/* Matrix rain */}
-          <MatrixRain />
+      {/* ── Scroll progress line ── */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, height: '2px', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }}>
+        <motion.div style={{ height: '100%', background: 'linear-gradient(90deg, #c084fc, #f472b6)', width: `${scrollPct}%`, transition: 'width 0.1s linear' }} />
+      </div>
 
-          {/* Morphing blobs */}
-          <GlowBlob color="var(--accent)"   x="-5%"  y="-20%" size={320} delay={0} />
-          <GlowBlob color="var(--blue)"     x="60%"  y="-10%" size={280} delay={2} />
-          <GlowBlob color="var(--pink)"     x="80%"  y="50%"  size={200} delay={4} />
-          <GlowBlob color="var(--yellow)"   x="10%"  y="70%"  size={180} delay={1} />
+      {/* ── Scrollable Layer ── */}
+      <div style={{ position: 'relative', zIndex: 10 }}>
 
-          {/* Scan line effect */}
-          <div style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-            background: `linear-gradient(to bottom, transparent ${scanLine - 2}%, rgba(0,196,204,0.04) ${scanLine}%, rgba(0,196,204,0.08) ${scanLine + 0.3}%, rgba(0,196,204,0.04) ${scanLine + 0.6}%, transparent ${scanLine + 2}%)`,
-          }} />
-
-          {/* Grid overlay */}
-          <div style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-            backgroundImage: `linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px',
-            maskImage: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.6) 100%)',
-          }} />
-
-          {/* Content */}
-          <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(2rem, 5vw, 3.5rem)' }}>
-
-
-
-            {/* Main title */}
+        {/* ═══ HERO ═══ */}
+        <section className="home-hero" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 6vw 10vh', position: 'relative' }}>
+          <div className="home-hero-inner">
+            {/* Eyebrow */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={heroVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              style={{ marginBottom: 14 }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.9, delay: 0.5 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.8rem' }}
             >
-              <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 900, lineHeight: 1.1 }}>
-                <span style={{ color: 'var(--text-primary)' }}>Drishya</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 900 }}> Vaani —</span>
-              </h1>
-              <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', marginTop: 4, minHeight: '2em' }}>
-                <span style={{ color: 'var(--accent)' }}>{typeText}</span>
-                <motion.span
-                  animate={{ opacity: [1, 0, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                  style={{ borderRight: '3px solid var(--accent)', marginLeft: 2 }}
-                />
-              </h2>
+              <span style={{ display: 'inline-block', width: 32, height: 1, background: '#c084fc' }} />
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#c084fc' }}>
+                Drishya Vaani · दृश्य वाणी
+              </span>
             </motion.div>
 
-            {/* Description */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={heroVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.8, marginBottom: 24 }}
-            >
-              Real-time gesture recognition using a{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>MediaPipe + MLP pipeline</strong>{' '}
-              trained on ISL data — converts hand gestures into sentences entirely in your browser.
-              No cloud. No upload. Pure AI.
-            </motion.p>
-
-            {/* Stat pills */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={heroVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}
-            >
-              {[
-                { icon: Cpu,    label: 'Model',    value: 'MLP Classifier' },
-                { icon: Zap,    label: 'Accuracy', value: '99.7%' },
-                { icon: Target, label: 'Signs',    value: '9 classes' },
-              ].map(({ icon: Icon, label, value }, i) => (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={heroVisible ? { opacity: 1, scale: 1 } : {}}
-                  transition={{ duration: 0.4, delay: 0.5 + i * 0.1, type: 'spring', stiffness: 250 }}
-                  whileHover={{ scale: 1.06, borderColor: 'var(--accent)', boxShadow: '0 0 16px var(--accent-glow)' }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '7px 14px', borderRadius: 10,
-                    background: 'var(--glass-bg)', border: '1px solid var(--border)',
-                    backdropFilter: 'blur(8px)', cursor: 'default',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                  }}
-                >
-                  <Icon size={13} style={{ color: 'var(--accent)' }} />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</span>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{value}</span>
+            {/* Giant split-char headline */}
+            <h1 style={{ fontSize: 'clamp(3.5rem, 10vw, 9.5rem)', fontWeight: 300, lineHeight: 0.92, fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: '-0.02em', marginBottom: '1.6rem', overflow: 'hidden' }}>
+              <div style={{ overflow: 'hidden' }}>
+                <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}>
+                  Limitless
                 </motion.div>
-              ))}
-            </motion.div>
+              </div>
+              <div style={{ overflow: 'hidden' }}>
+                <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                  <span style={{ WebkitTextStroke: '1px rgba(192,132,252,0.6)', color: 'transparent' }}>begins</span>
+                </motion.div>
+              </div>
+              <div style={{ overflow: 'hidden' }}>
+                <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}>
+                  here.
+                </motion.div>
+              </div>
+            </h1>
 
             {/* CTAs */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={heroVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.65 }}
-              style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.1 }}
+              style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}
             >
-              <Link to="/translate" style={{ textDecoration: 'none' }}>
-                <MagneticButton
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '0.7rem 1.6rem', fontSize: '0.9rem', fontWeight: 700,
-                    borderRadius: 12, background: 'var(--accent)', color: '#fff',
-                    border: 'none', cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                  }}
-                >
-                  <motion.div
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear', repeatDelay: 1 }}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <Video size={16} /> Start Translating <ArrowRight size={14} />
-                </MagneticButton>
-              </Link>
+              <MagButton to="/translate" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.9rem 2.2rem', fontSize: '0.9rem', fontWeight: 500,
+                borderRadius: '100px', background: 'linear-gradient(135deg, #c084fc, #f472b6)',
+                color: '#fff', border: 'none', cursor: 'pointer', letterSpacing: '0.01em',
+                boxShadow: '0 0 40px rgba(192,132,252,0.5)',
+              }}>
+                <Video size={16} /> Start Translating <ArrowRight size={14} />
+              </MagButton>
 
-              <Link to="/learn" style={{ textDecoration: 'none' }}>
-                <MagneticButton
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '0.7rem 1.4rem', fontSize: '0.9rem', fontWeight: 600,
-                    borderRadius: 12, background: 'var(--glass-bg)', color: 'var(--text-primary)',
-                    border: '1px solid var(--border)', cursor: 'pointer', backdropFilter: 'blur(8px)',
-                  }}
-                >
-                  <GraduationCap size={16} /> Learn ISL
-                </MagneticButton>
-              </Link>
-
-              {/* Ctrl+K hint */}
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
-                style={{ fontSize: '0.72rem', color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '0.65rem' }}>Ctrl+K</kbd>
-                <span>quick nav</span>
-              </motion.div>
+              <MagButton to="/learn" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.9rem 2rem', fontSize: '0.9rem', fontWeight: 400,
+                borderRadius: '100px', background: 'rgba(255,255,255,0.06)',
+                color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)',
+                cursor: 'pointer', backdropFilter: 'blur(8px)',
+              }}>
+                <GraduationCap size={16} /> Learn ISL
+              </MagButton>
             </motion.div>
           </div>
-        </div>
-      </ParallaxContainer>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          FEATURES
-      ══════════════════════════════════════════════════════════════════ */}
-      <Reveal>
-        <p className="section-label">Quick Access</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, marginBottom: 32 }}>
-          {FEATURES.map(({ icon: Icon, title, desc, to, accent }, i) => (
+          {/* Scroll cue */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2, duration: 1 }}
+            style={{ position: 'absolute', bottom: '4vh', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+          >
             <motion.div
-              key={to}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -6, rotateY: 2, rotateX: -2, transformStyle: 'preserve-3d' }}
+              animate={{ y: [0, 14, 0], opacity: [0.2, 1, 0.2] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ width: 20, height: 32, border: '1px solid rgba(192,132,252,0.4)', borderRadius: 20, position: 'relative', display: 'flex', justifyContent: 'center', paddingTop: 5 }}
             >
-              <Link to={to} style={{ textDecoration: 'none' }}>
-                <motion.div
-                  className="card"
-                  style={{ height: '100%', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
-                  whileHover={{ borderColor: accent, boxShadow: `0 8px 32px ${accent}33` }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {/* Shimmer sweep on hover */}
-                  <motion.div
-                    initial={{ x: '-100%' }} whileHover={{ x: '200%' }}
-                    transition={{ duration: 0.6 }}
-                    style={{
-                      position: 'absolute', inset: 0, zIndex: 0,
-                      background: `linear-gradient(90deg, transparent, ${accent}15, transparent)`,
-                      pointerEvents: 'none',
-                    }}
-                  />
+              <motion.div
+                animate={{ y: [0, 10, 0], opacity: [1, 0, 1] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ width: 3, height: 6, borderRadius: 3, background: '#c084fc' }}
+              />
+            </motion.div>
+          </motion.div>
+        </section>
 
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <motion.div
-                      whileHover={{ scale: 1.15, rotate: 8 }}
-                      transition={{ type: 'spring', stiffness: 300 }}
+        {/* ═══ MARQUEE ═══ */}
+        <Marquee items={MARQUEE_ITEMS} />
+
+        {/* ═══ SPACER — camera flies ═══ */}
+        <section style={{ height: '80vh' }} />
+
+        {/* ═══ STATEMENT ═══ */}
+        <section style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', padding: '0 8vw' }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)', fontWeight: 300, fontFamily: "'Playfair Display', Georgia, serif", lineHeight: 1.25, maxWidth: '900px' }}>
+            <SplitChars text="Bridging the gap for " style={{ display: 'block' }} stagger={0.025} delay={0} />
+            <SplitChars
+              text="63 million "
+              style={{ display: 'block', color: '#c084fc', fontStyle: 'italic' }}
+              stagger={0.04}
+              delay={0.15}
+            />
+            <SplitChars text="users through edge AI." style={{ display: 'block' }} stagger={0.025} delay={0.3} />
+          </h2>
+        </section>
+
+        {/* ═══ SPACER ═══ */}
+        <section style={{ height: '60vh' }} />
+
+        {/* ═══ PERFORMANCE ═══ */}
+        <section style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 8vw' }}>
+          <div style={{ maxWidth: 520 }}>
+            <motion.div
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              style={{ height: 1, background: 'linear-gradient(90deg, #c084fc, transparent)', marginBottom: '1.5rem', transformOrigin: 'left' }}
+            />
+            <SplitChars text="Predictions in" style={{ display: 'block', fontSize: 'clamp(0.8rem, 1.5vw, 1rem)', color: 'rgba(255,255,255,0.5)', marginBottom: '0.6rem' }} stagger={0.03} />
+            <SplitChars
+              text="under 80ms."
+              style={{ display: 'block', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300, marginBottom: '1.5rem' }}
+              stagger={0.05}
+            />
+            <p style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 1.9, fontSize: '0.95rem', fontWeight: 300 }}>
+              MediaPipe extracts 21 hand landmarks per frame. A trained MLP classifier converts them to text — entirely in your browser. No cloud, no upload, no latency.
+            </p>
+          </div>
+        </section>
+
+        {/* ═══ SPACER ═══ */}
+        <section style={{ height: '40vh' }} />
+
+        {/* ═══ FEATURES ═══ */}
+        <section style={{ padding: '8vh 5vw' }}>
+          <div style={{ marginBottom: '4rem' }}>
+            <SplitChars text="Enter the portal." style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300 }} stagger={0.04} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', perspective: '1200px' }}>
+            {FEATURES.map((f, idx) => (
+              <Link key={idx} to={f.to} style={{ textDecoration: 'none' }}>
+                <div className="feat-card" style={{ opacity: 0 }}>
+                  <motion.div
+                    whileHover={{ y: -12, rotateX: 3, rotateY: idx % 2 === 0 ? -4 : 4, borderColor: f.color, boxShadow: `0 20px 60px ${f.color}30` }}
+                    transition={{ duration: 0.35 }}
+                    style={{
+                      padding: '2.8rem 2.2rem',
+                      borderRadius: '20px',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      background: 'rgba(15, 10, 25, 0.6)',
+                      backdropFilter: 'blur(20px)',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      minHeight: '260px', cursor: 'pointer',
+                      transition: 'border-color 0.3s, box-shadow 0.3s',
+                      transformStyle: 'preserve-3d',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <f.icon size={28} color={f.color} />
+                      <span style={{ fontSize: '4rem', fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(255,255,255,0.04)', lineHeight: 1 }}>{f.num}</span>
+                    </div>
+                    <div>
+                      <h3 style={{ color: '#fff', fontSize: '1.3rem', fontWeight: 400, marginBottom: '0.6rem', fontFamily: "'Playfair Display', serif" }}>{f.title}</h3>
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.82rem', lineHeight: 1.7, marginBottom: '1.4rem' }}>{f.desc}</p>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: f.color, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        Launch module <ArrowRight size={12} />
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ═══ STATS ═══ */}
+        <section style={{ padding: '8vh 5vw' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.2rem' }}>
+            {STATS.map(({ label, value, suffix, sub, prefix }) => (
+              <div key={label} className="stat-card" style={{ opacity: 0 }}>
+                <motion.div
+                  whileHover={{ scale: 1.04, borderColor: 'rgba(192,132,252,0.5)', boxShadow: '0 0 40px rgba(192,132,252,0.15)' }}
+                  style={{
+                    padding: '2.5rem 1.8rem', borderRadius: '18px',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: 'rgba(15,10,25,0.5)', backdropFilter: 'blur(16px)',
+                    transition: 'border-color 0.3s, box-shadow 0.3s',
+                  }}
+                >
+                  <div style={{ fontSize: 'clamp(2.2rem, 4vw, 3.2rem)', fontWeight: 700, color: '#c084fc', lineHeight: 1, marginBottom: '0.5rem' }}>
+                    <Counter value={value} suffix={suffix} prefix={prefix || ''} />
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem' }}>{label}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>{sub}</div>
+                </motion.div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ═══ PILLARS ═══ */}
+        <section style={{ padding: '6vh 5vw' }}>
+          <div style={{ marginBottom: '3rem' }}>
+            <SplitChars text="Why Drishya Vaani." style={{ fontSize: 'clamp(1.6rem, 3.5vw, 3rem)', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300 }} stagger={0.035} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            {PILLARS.map(({ icon: Icon, title, desc }, i) => (
+              <motion.div
+                key={title}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -6 }}
+                style={{
+                  padding: '2rem 1.5rem', borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(15,10,25,0.4)', backdropFilter: 'blur(12px)',
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.2rem' }}>
+                  <Icon size={18} color="#c084fc" />
+                </div>
+                <h3 style={{ color: '#fff', fontSize: '1rem', fontWeight: 500, marginBottom: '0.5rem' }}>{title}</h3>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', lineHeight: 1.7 }}>{desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ═══ BIG CTA ═══ */}
+        <section style={{ padding: '10vh 5vw', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              padding: '5rem 4vw', borderRadius: '28px', maxWidth: 740, width: '100%',
+              border: '1px solid rgba(192,132,252,0.2)',
+              background: 'rgba(192,132,252,0.05)', backdropFilter: 'blur(24px)',
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            {/* Animated glow behind CTA */}
+            <motion.div
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+              style={{ position: 'absolute', inset: -2, borderRadius: 30, zIndex: -1, background: 'conic-gradient(from 0deg, #c084fc22, #f472b622, #38bdf822, #c084fc22)', pointerEvents: 'none' }}
+            />
+
+            <SplitChars
+              text="Ready to bridge worlds?"
+              style={{ display: 'block', fontSize: 'clamp(1.8rem, 4vw, 3rem)', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 300, marginBottom: '1rem' }}
+              stagger={0.04}
+            />
+            <p style={{ color: 'rgba(255,255,255,0.45)', marginBottom: '2.5rem', fontSize: '1rem', lineHeight: 1.7 }}>
+              Start translating Indian Sign Language in real time — no download, no account, no cloud.
+            </p>
+            <MagButton to="/translate" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.7rem',
+              padding: '1rem 2.8rem', fontSize: '1rem', fontWeight: 500, borderRadius: '100px',
+              background: 'linear-gradient(135deg, #c084fc, #f472b6)',
+              color: '#fff', border: 'none', cursor: 'pointer',
+              boxShadow: '0 0 60px rgba(192,132,252,0.45)',
+            }}>
+              <Video size={18} /> Begin Translation <ArrowRight size={16} />
+            </MagButton>
+          </motion.div>
+        </section>
+
+        {/* ═══ TEAM SECTION ═══ */}
+        <section style={{ padding: '12vh 5vw 8vh', position: 'relative', overflow: 'hidden' }}>
+
+          {/* Giant blurred BG text */}
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none', zIndex: 0,
+          }}>
+            <span style={{
+              fontSize: 'clamp(6rem, 20vw, 18rem)', fontWeight: 900,
+              fontFamily: "'Playfair Display', Georgia, serif",
+              color: 'rgba(192,132,252,0.04)', letterSpacing: '-0.05em',
+              userSelect: 'none', whiteSpace: 'nowrap',
+            }}>
+              CREATORS
+            </span>
+          </div>
+
+          {/* Section label */}
+          <div style={{ position: 'relative', zIndex: 1, marginBottom: '5rem', textAlign: 'center' }}>
+            <motion.div
+              initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
+              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ height: 1, background: 'linear-gradient(90deg, transparent, #c084fc, #f472b6, transparent)', marginBottom: '1.5rem' }}
+            />
+            <SplitChars
+              text="Crafted with ❤️ by"
+              style={{ fontSize: 'clamp(0.75rem, 1.5vw, 0.9rem)', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)' }}
+              stagger={0.04}
+            />
+          </div>
+
+          {/* Team members */}
+          <div style={{
+            position: 'relative', zIndex: 1,
+            display: 'flex', flexDirection: 'column', gap: '2px',
+          }}>
+            {[
+              { name: 'Khushi Kumari',  role: 'Developer',         index: 0, color: '#c084fc', accent: '#e879f9' },
+              { name: 'Kiran Harak',    role: 'Developer',         index: 1, color: '#38bdf8', accent: '#818cf8' },
+              { name: 'Nupur Thakur',   role: 'Developer',         index: 2, color: '#f472b6', accent: '#fb923c' },
+            ].map(({ name, role, index, color, accent }) => (
+              <motion.div
+                key={name}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -100 : 100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, delay: index * 0.15, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ x: index % 2 === 0 ? 16 : -16 }}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end',
+                  padding: '1.2rem 0',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  cursor: 'default', position: 'relative',
+                }}
+              >
+                {/* Glow line that sweeps on hover */}
+                <motion.div
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  whileHover={{ scaleX: 1, opacity: 1 }}
+                  style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
+                    background: `linear-gradient(90deg, transparent, ${color}, ${accent}, transparent)`,
+                    transformOrigin: index % 2 === 0 ? 'left' : 'right',
+                  }}
+                  transition={{ duration: 0.4 }}
+                />
+
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '2rem',
+                  flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
+                }}>
+                  {/* Pulsing orb avatar */}
+                  <motion.div
+                    animate={{ boxShadow: [`0 0 20px ${color}40`, `0 0 60px ${color}80`, `0 0 20px ${color}40`] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: index * 0.4 }}
+                    whileHover={{ scale: 1.2 }}
+                    style={{
+                      width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+                      background: `radial-gradient(circle at 35% 35%, ${accent}, ${color})`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1.1rem', fontWeight: 800, color: '#fff',
+                      fontFamily: "'Playfair Display', serif",
+                      border: `1px solid ${color}60`,
+                    }}
+                  >
+                    {name.charAt(0)}
+                  </motion.div>
+
+                  {/* Name + role */}
+                  <div style={{ textAlign: index % 2 === 0 ? 'left' : 'right' }}>
+                    <motion.h3
+                      whileHover={{ letterSpacing: '0.05em' }}
+                      transition={{ duration: 0.4 }}
                       style={{
-                        width: 42, height: 42, borderRadius: 12, marginBottom: 12,
-                        background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 'clamp(1.8rem, 5vw, 4.5rem)', fontWeight: 300,
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        lineHeight: 1.0, marginBottom: '0.3rem',
+                        background: `linear-gradient(135deg, #fff 40%, ${color})`,
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                       }}
                     >
-                      <Icon size={18} style={{ color: accent }} />
-                    </motion.div>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{title}</p>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', lineHeight: 1.55 }}>{desc}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: '0.72rem', color: accent }}>
-                      Open <ArrowRight size={11} />
+                      {name}
+                    </motion.h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', justifyContent: index % 2 === 0 ? 'flex-start' : 'flex-end' }}>
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
+                        style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: color }}>
+                        {role}
+                      </span>
                     </div>
                   </div>
-                </motion.div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </Reveal>
+                </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          STATS — Animated counters with exploding entrance
-      ══════════════════════════════════════════════════════════════════ */}
-      <Reveal delay={0.05}>
-        <p className="section-label">Project Statistics</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 10, marginBottom: 32 }}>
-          {STATS.map(({ label, num, suffix, sub, prefix }, i) => (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-              whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5, type: 'spring', stiffness: 200 }}
-              whileHover={{ scale: 1.05, boxShadow: '0 0 24px var(--accent-glow)', borderColor: 'var(--accent-border)' }}
-              className="card"
-              style={{ cursor: 'default', transition: 'border-color 0.3s' }}
-            >
-              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>
-                <AnimatedCounter value={num} suffix={suffix} prefix={prefix} />
-              </div>
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: 6 }}>{label}</p>
-              <p style={{ fontSize: '0.68rem', color: 'var(--text-faint)', marginTop: 2 }}>{sub}</p>
-            </motion.div>
-          ))}
-        </div>
-      </Reveal>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          HOW IT WORKS — staggered with connector line
-      ══════════════════════════════════════════════════════════════════ */}
-      <Reveal delay={0.1}>
-        <p className="section-label">How It Works</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 32 }}>
-          {HOW_IT_WORKS.map(({ step, title, desc }, i) => (
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.12, duration: 0.5 }}
-              className="card"
-              style={{ position: 'relative', overflow: 'hidden' }}
-              whileHover={{ y: -3 }}
-            >
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 0.06 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.12 + 0.3, duration: 0.4 }}
-                style={{
-                  position: 'absolute', right: -10, bottom: -10,
-                  fontSize: '5rem', fontWeight: 900, color: 'var(--accent)',
-                  fontFamily: "'JetBrains Mono', monospace", lineHeight: 1, pointerEvents: 'none',
-                }}
-              >
-                {step}
+                {/* Index number ghost */}
+                <span style={{
+                  position: 'absolute',
+                  right: index % 2 === 0 ? '2vw' : 'auto',
+                  left: index % 2 !== 0 ? '2vw' : 'auto',
+                  fontSize: '6rem', fontWeight: 900,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: 'rgba(255,255,255,0.025)',
+                  lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
+                }}>
+                  0{index + 1}
+                </span>
               </motion.div>
-              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.06em' }}>
-                STEP {step}
-              </span>
-              <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: 6, marginBottom: 6 }}>{title}</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', lineHeight: 1.55 }}>{desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </Reveal>
+            ))}
+          </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          WHY — cascade stagger
-      ══════════════════════════════════════════════════════════════════ */}
-      <Reveal delay={0.15}>
-        <p className="section-label">Why Drishya Vaani</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, marginBottom: 32 }}>
-          {HIGHLIGHTS.map(({ icon: Icon, title, desc }, i) => (
-            <motion.div
-              key={title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.45 }}
-              whileHover={{ y: -3, borderColor: 'var(--accent-border)', boxShadow: 'var(--shadow-glow)' }}
-              className="card"
-              style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'default', transition: 'border-color 0.2s, box-shadow 0.2s' }}
-            >
-              <motion.div
-                whileHover={{ rotate: 360, scale: 1.2 }}
-                transition={{ duration: 0.5 }}
-                style={{
-                  width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                  background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <Icon size={15} style={{ color: 'var(--accent)' }} />
-              </motion.div>
-              <div>
-                <p style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</p>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', lineHeight: 1.55 }}>{desc}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </Reveal>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          ABOUT — final CTA band
-      ══════════════════════════════════════════════════════════════════ */}
-      <Reveal delay={0.2}>
-        <motion.div
-          style={{
-            position: 'relative', borderRadius: 20, padding: '2rem', overflow: 'hidden',
-            background: 'var(--bg-panel)', border: '1px solid var(--accent-border)',
-          }}
-          whileHover={{ boxShadow: '0 0 48px var(--accent-glow)' }}
-          transition={{ duration: 0.4 }}
-        >
-          {/* Animated gradient border sweep */}
+          {/* Bottom tagline */}
           <motion.div
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-            style={{
-              position: 'absolute', inset: -2, borderRadius: 22, zIndex: -1,
-              background: 'conic-gradient(from 0deg, var(--accent), var(--blue), var(--pink), var(--yellow), var(--accent))',
-              opacity: 0.3,
-            }}
-          />
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            style={{ textAlign: 'center', marginTop: '4rem', position: 'relative', zIndex: 1 }}
+          >
+            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', fontStyle: 'italic' }}>
+              — Making communication accessible for 63 million ISL users —
+            </span>
+          </motion.div>
+        </section>
 
-          <Sparkles size={20} style={{ color: 'var(--accent)', marginBottom: 10 }} />
-          <p className="section-label" style={{ color: 'var(--accent)' }}>About Drishya Vaani</p>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.8, maxWidth: 640 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Drishya Vaani</strong> (दृश्य वाणी) means{' '}
-            <em>"visible voice"</em> — a real-time AI/ML system that makes communication
-            accessible for the <strong style={{ color: 'var(--accent)' }}>63 million</strong> Indian Sign Language users.
-            The system uses a MediaPipe-based pipeline combined with a trained MLP classifier for real-time,
-            privacy-preserving ISL translation — entirely in the browser, no cloud, no upload.
-          </p>
-        </motion.div>
-      </Reveal>
+        {/* ═══ FOOTER ═══ */}
+        <footer style={{ padding: '2.5rem 5vw', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div>
+            <p style={{ fontSize: '1rem', fontWeight: 600, background: 'linear-gradient(135deg, #c084fc, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.2rem' }}>Drishya Vaani</p>
+            <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)' }}>दृश्य वाणी — Visible Voice · 2026</p>
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <kbd style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.07)', fontFamily: 'monospace' }}>Ctrl+K</kbd> Quick Nav
+          </div>
+        </footer>
 
-      {/* Bottom hint */}
-      <div style={{ textAlign: 'center', padding: '2rem 0 0.5rem', color: 'var(--text-ghost)', fontSize: '0.72rem' }}>
-        Press <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '0.65rem' }}>Ctrl+K</kbd> to quick navigate anywhere
       </div>
     </div>
   )

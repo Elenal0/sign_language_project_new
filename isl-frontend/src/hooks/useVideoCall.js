@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useVideoCall.js — WebRTC + WebSocket hook for 2-user ISL video call.
  */
 
@@ -43,6 +43,8 @@ export function useVideoCall() {
   const [peerSentence,   setPeerSentence]   = useState("");
   const [peerWord,       setPeerWord]       = useState("");
   const [peerSuggestion, setPeerSuggestion] = useState("");
+  const [peerName,       setPeerName]       = useState("");
+  const [peerChat,       setPeerChat]       = useState(null);
 
   const cleanup = useCallback(() => {
     if (pcRef.current)       { pcRef.current.close();       pcRef.current       = null; }
@@ -56,6 +58,8 @@ export function useVideoCall() {
     setPeerSentence("");
     setPeerWord("");
     setPeerSuggestion("");
+    setPeerName("");
+    setPeerChat(null);
   }, []);
 
   const buildPeerConnection = useCallback((onIceCandidate) => {
@@ -85,6 +89,15 @@ export function useVideoCall() {
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      const s = pc.iceConnectionState;
+      if (s === "connected" || s === "completed")   setStatus("connected");
+      if (s === "disconnected" || s === "failed") {
+        setStatus("waiting");
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+      }
+    };
+
     return pc;
   }, []);
 
@@ -103,22 +116,11 @@ export function useVideoCall() {
     tracks.forEach((track) => {
       if (!pc.getSenders().some((s) => s.track === track)) pc.addTrack(track, mediaStream);
     });
-    setTimeout(() => {
-      pc.getSenders().forEach((sender) => {
-        if (sender.track?.kind !== "video") return;
-        if (sender.track.contentHint !== undefined) sender.track.contentHint = "motion";
-        const params = sender.getParameters();
-        if (!params.encodings?.length) params.encodings = [{}];
-        params.encodings[0].maxBitrate            = 400000;
-        params.encodings[0].maxFramerate          = 15;
-        params.encodings[0].degradationPreference = "maintain-framerate";
-        sender.setParameters(params).catch(() => {});
-      });
-    }, 200);
+    // Removed bitrate/framerate limitations to fix lag and low FPS
     return true;
   }, []);
 
-  const joinRoom = useCallback(async (roomId, localStream) => {
+  const joinRoom = useCallback(async (roomId, localStream, userName) => {
     cleanup();
     setStatus("connecting");
 
@@ -128,10 +130,23 @@ export function useVideoCall() {
     signalWsRef.current = signalWs;
     chatWsRef.current   = chatWs;
 
+    chatWs.onopen = () => {
+      chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User" }));
+    };
+
     chatWs.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
         if (msg.slot === mySlotRef.current) return;
+        if (msg.type === "name") {
+          setPeerName(msg.name);
+          if (!msg.isReply) {
+             chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User", isReply: true }));
+          }
+        }
+        if (msg.type === "chat") {
+          setPeerChat({ text: msg.text, id: Date.now() });
+        }
         if (msg.type === "translation") {
           if (msg.sentence !== undefined) setPeerSentence(msg.sentence);
           if (msg.word     !== undefined) setPeerWord(msg.word);
@@ -188,7 +203,7 @@ export function useVideoCall() {
         case "peer_left": {
           setStatus("waiting");
           if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-          setPeerSentence(""); setPeerWord(""); setPeerSuggestion("");
+          setPeerSentence(""); setPeerWord(""); setPeerSuggestion(""); setPeerName("");
           break;
         }
         case "full": {
@@ -217,14 +232,20 @@ export function useVideoCall() {
     ws.send(JSON.stringify({ type: "suggestion", slot: mySlotRef.current, text }));
   }, []);
 
+  const sendChatMessage = useCallback((text) => {
+    const ws = chatWsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "chat", slot: mySlotRef.current, text }));
+  }, []);
+
   useEffect(() => cleanup, [cleanup]);
 
   return {
     localVideoRef, remoteVideoRef,
     status, mySlot,
-    peerSentence, peerWord, peerSuggestion,
+    peerSentence, peerWord, peerSuggestion, peerName, peerChat,
     attachRemoteVideoRef,
     joinRoom, leaveRoom,
-    sendTranslation, sendSuggestion,
+    sendTranslation, sendSuggestion, sendChatMessage,
   };
 }

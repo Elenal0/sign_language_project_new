@@ -14,7 +14,7 @@ import {
   Video, VideoOff, RotateCcw, Copy, Save, Volume2, VolumeX,
   AlertCircle, Wifi, WifiOff, Lightbulb,
   Phone, PhoneOff, Users, User, Link2, Loader2, UserCheck,
-  Sparkles, Zap, MessageSquare, CheckCircle2, Send,
+  Sparkles, Zap, MessageSquare, CheckCircle2, Send, Settings, Monitor, Mic, MicOff, Maximize2, Minimize2,
 } from 'lucide-react';
 import { useWebcam }    from '../hooks/useWebcam';
 import { useVideoCall } from '../hooks/useVideoCall';
@@ -274,8 +274,8 @@ export default function Translator() {
 
   const {
     localVideoRef, status: callStatus, mySlot,
-    peerSentence, peerWord, peerSuggestion,
-    attachRemoteVideoRef, joinRoom, leaveRoom, sendTranslation, sendSuggestion,
+    peerSentence, peerWord, peerSuggestion, peerName, peerChat,
+    attachRemoteVideoRef, joinRoom, leaveRoom, sendTranslation, sendSuggestion, sendChatMessage,
   } = useVideoCall();
 
   const { addToHistory, showToast, getSuggestions } = useApp();
@@ -283,6 +283,18 @@ export default function Translator() {
   const [mode, setMode]               = useState('solo');
   const [roomInput, setRoomInput]     = useState('');
   const [inRoom, setInRoom]           = useState(false);
+  const [userName, setUserName]       = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarTab, setSidebarTab]   = useState('transcript');
+  const [isMuted, setIsMuted]         = useState(false);
+  const [isVideoOn, setIsVideoOn]     = useState(true);
+  const [isAslActive, setIsAslActive] = useState(true);
+  const [currentTime, setCurrentTime] = useState('');
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const [sentence, setSentence]             = useState([]);
   const [language, setLanguage]             = useState('en');
   const [translatedText, setTranslatedText] = useState('');
@@ -293,6 +305,10 @@ export default function Translator() {
   const [holdCount, setHoldCount]           = useState(0);
   const [suggestions, setSuggestions]       = useState([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
+  
+  // Chat and History
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
   const sentenceRef   = useRef([]);
   const translateAbortRef = useRef(null);
 
@@ -399,17 +415,36 @@ export default function Translator() {
 
   // Apply suggestion — and relay to partner in call mode
   const applySuggestion = (text) => {
-    const words = text.replace(/[?.!,]/g, '').split(' ');
-    setSentence(words.map(w => ({ word: w, confidence: 1 })));
+    setSentence([]);
     setSuggestions([]);
     setSelectedSuggestion(text);
     showToast('Suggestion applied', 'success');
 
-    // ✅ Relay the chosen suggestion to partner
-    if (mode === 'call' && callStatus === 'connected' && sendSuggestion) {
-      sendSuggestion(text);
+    const msg = { id: Date.now(), sender: 'Me', text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+    setChatMessages(p => [...p, msg]);
+
+    // Relay the chosen suggestion to partner as a chat message
+    if (mode === 'call' && callStatus === 'connected' && sendChatMessage) {
+      sendChatMessage(text);
     }
   };
+
+  const handleSendChat = () => {
+    if (!chatInput.trim()) return;
+    const text = chatInput.trim();
+    setChatInput('');
+    const msg = { id: Date.now(), sender: 'Me', text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+    setChatMessages(p => [...p, msg]);
+    if (mode === 'call' && callStatus === 'connected' && sendChatMessage) {
+      sendChatMessage(text);
+    }
+  };
+
+  useEffect(() => {
+    if (peerChat) {
+      setChatMessages(p => [...p, { id: peerChat.id, sender: peerName || 'Partner', text: peerChat.text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }]);
+    }
+  }, [peerChat, peerName]);
 
   const handleJoinRoom = async () => {
     const roomId = normalizeRoomCode(roomInput);
@@ -419,7 +454,7 @@ export default function Translator() {
       const ok = await handleStart({ detect: false });
       if (!ok) return;
     }
-    await joinRoom(roomId, getStream());
+    await joinRoom(roomId, getStream(), userName);
     setInRoom(true);
   };
 
@@ -452,677 +487,348 @@ export default function Translator() {
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Render variables
   return (
-    <div style={{ padding: '1.25rem 1.5rem', minHeight: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="flex flex-col h-full bg-[#050505] text-white overflow-hidden relative font-sans">
+      
+      {/* Subtle Glowing Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <motion.div
-            animate={{ boxShadow: backendReady ? ['0 0 0px var(--accent)', '0 0 16px var(--accent-glow)', '0 0 0px var(--accent)'] : 'none' }}
-            transition={{ duration: 2.5, repeat: Infinity }}
-            style={{
-              width: 42, height: 42, borderRadius: 12,
-              background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Video size={18} style={{ color: 'var(--accent)' }} />
-          </motion.div>
-          <div>
-            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>ISL Translator</h1>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              {mode === 'call' ? '2-user video call mode' : 'Single user · real-time detection'}
-            </p>
+      {/* HEADER */}
+      <header className="relative z-50 flex items-center justify-between px-6 py-4 shrink-0">
+        {/* Left: Branding & Status */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl">
+            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} className="p-1.5 bg-indigo-500/20 rounded-lg">
+              <Video className="w-4 h-4 text-indigo-400" />
+            </motion.div>
+            <h1 className="font-semibold text-sm tracking-wide">Drishya Vaani</h1>
           </div>
+          
+          {(isActive || backendReady) && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-emerald-400">SignSync™ Active</span>
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Language toggle */}
-          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+        {/* Center: Language & Mode */}
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
             {Object.entries(LANG_CONFIG).map(([code, cfg]) => (
-              <button key={code} onClick={() => setLanguage(code)}
-                title={cfg.full}
-                style={{
-                  padding: '4px 10px', borderRadius: 5, fontSize: '0.72rem', fontWeight: 700,
-                  cursor: 'pointer', border: 'none', transition: 'all 0.2s',
-                  background: language === code ? 'var(--accent)' : 'transparent',
-                  color: language === code ? '#fff' : 'var(--text-muted)',
-                }}>
+              <button key={code} onClick={() => setLanguage(code)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${language === code ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
                 {cfg.label}
               </button>
             ))}
           </div>
-          {/* Mode toggle */}
-          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
-            {[{ id: 'solo', Icon: User, label: 'Solo' }, { id: 'call', Icon: Users, label: 'Call' }].map(({ id, Icon, label }) => (
-              <button key={id} onClick={() => handleModeSwitch(id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px',
-                  borderRadius: 5, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                  border: 'none', transition: 'all 0.2s',
-                  background: mode === id ? 'var(--accent)' : 'transparent',
-                  color: mode === id ? '#fff' : 'var(--text-muted)',
-                }}>
-                <Icon size={12} /> {label}
+          <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
+            {[{ id: 'solo', label: 'Solo', icon: User }, { id: 'call', label: 'Call', icon: Users }].map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => handleModeSwitch(id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === id ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
+                <Icon className="w-3.5 h-3.5" /> {label}
               </button>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* ── Backend banner ── */}
-      <motion.div
-        animate={{ borderColor: backendReady ? 'var(--green-border)' : 'var(--red-border)' }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
-          borderRadius: 10, fontSize: '0.75rem',
-          background: backendReady ? 'var(--green-soft)' : 'var(--red-soft)',
-          border: `1px solid ${backendReady ? 'var(--green-border)' : 'var(--red-border)'}`,
-          color: 'var(--text-muted)',
-        }}
-      >
-        {backendReady
-          ? <Wifi size={13} style={{ color: 'var(--green)', flexShrink: 0 }} />
-          : <WifiOff size={13} style={{ color: 'var(--red)', flexShrink: 0 }} />}
-        {backendReady
-          ? <span>Backend connected — real-time ML inference active  <strong style={{ color: 'var(--green)' }}>●</strong></span>
-          : <span>Backend offline · Start: <code style={{ color: 'var(--red)', background: 'var(--bg-panel)', padding: '1px 6px', borderRadius: 4 }}>uvicorn api.server:app --reload --port 8000</code></span>}
-      </motion.div>
-
-      {/* ═══════════════════════════════ SOLO MODE ═══════════════════════════ */}
-      {mode === 'solo' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) minmax(0,2fr)', gap: 16 }}>
-
-          {/* Left — Camera */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <motion.div
-              className="card"
-              style={{ padding: 0, overflow: 'hidden' }}
-              whileHover={{ boxShadow: isActive ? '0 0 32px var(--accent-glow)' : 'var(--shadow-md)' }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Camera viewport */}
-              <div style={{ position: 'relative', aspectRatio: '16/9', background: 'var(--bg-inset)' }}>
-                <video ref={videoRef} autoPlay playsInline muted
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }} />
-                <canvas ref={canvasRef}
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
-
-                {/* Off state */}
-                {!isActive && !error && (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-inset)', gap: 12 }}>
-                    <motion.div
-                      animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity }}
-                      style={{
-                        width: 72, height: 72, borderRadius: 18, background: 'var(--bg-panel)',
-                        border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <Video size={28} style={{ color: 'var(--text-ghost)' }} />
-                    </motion.div>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>
-                      {backendReady
-                        ? <><strong style={{ color: 'var(--text-primary)' }}>Click Start Camera</strong> to begin</>
-                        : <span style={{ color: 'var(--red)' }}>Start the backend first</span>}
-                    </p>
-                  </div>
-                )}
-
-                {/* Error state */}
-                {error && (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <AlertCircle size={32} style={{ color: 'var(--red)', margin: '0 auto 8px' }} />
-                      <p style={{ color: 'var(--red)', fontWeight: 600 }}>Camera Error</p>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>{error}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* LIVE badge */}
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                      style={{
-                        position: 'absolute', top: 10, left: 10,
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        background: 'var(--glass-bg)', backdropFilter: 'blur(8px)',
-                        padding: '4px 10px', borderRadius: 8, border: '1px solid var(--glass-border)',
-                      }}
-                    >
-                      <motion.span animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1, repeat: Infinity }}
-                        style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)', display: 'block' }} />
-                      <span style={{ fontSize: '0.68rem', color: 'var(--red)', fontWeight: 700 }}>LIVE</span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{fps} fps</span>
-                      {prediction?.inference_ms && (
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{prediction.inference_ms}ms</span>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Hold progress bar overlay at bottom */}
-                {prediction?.hand_detected && holdCount > 0 && (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: 'rgba(0,0,0,0.3)' }}>
-                    <motion.div
-                      animate={{ width: `${(holdCount / HOLD_FRAMES) * 100}%` }}
-                      style={{ height: '100%', background: 'var(--accent)' }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Controls bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', flexWrap: 'wrap' }}>
-                {!isActive
-                  ? (
-                    <motion.button
-                      onClick={handleStart} disabled={!backendReady}
-                      className="btn-primary"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: backendReady ? 1 : 0.5 }}
-                      whileHover={backendReady ? { scale: 1.03, boxShadow: '0 0 20px var(--accent-glow)' } : {}}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <Video size={14} /> {backendReady ? 'Start Camera' : 'Backend Offline'}
-                    </motion.button>
-                  ) : (
-                    <motion.button
-                      onClick={handleStop}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--red-soft)', color: 'var(--red)', border: '1px solid var(--red-border)', padding: '0.5rem 1rem', borderRadius: 10, fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}
-                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                    >
-                      <VideoOff size={14} /> Stop
-                    </motion.button>
-                  )}
-                <motion.button onClick={handleReset} className="btn-secondary"
-                  style={{ display: 'flex', alignItems: 'center', gap: 5 }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                >
-                  <RotateCcw size={13} /> Reset
-                </motion.button>
-              </div>
-            </motion.div>
+        {/* Right: Security & Time */}
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+            End-to-end Encrypted
           </div>
-
-          {/* Right — Detection + Sentence */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <DetectionCard pct={pct} prediction={prediction} holdCount={holdCount} />
-            <SentenceCard
-              sentence={sentence} suggestions={suggestions}
-              getText={getText} getDisplayText={getDisplayText}
-              translatedText={translatedText} isTranslating={isTranslating}
-              language={language} langConfig={LANG_CONFIG}
-              handleCopy={handleCopy}
-              handleSave={handleSave} handleSpeak={handleSpeak}
-              isSpeaking={isSpeaking} applySuggestion={applySuggestion}
-              speechRate={speechRate} setSpeechRate={setSpeechRate}
-              mode={mode} callStatus={callStatus}
-            />
+          <div className="text-sm font-medium text-gray-300 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+            {currentTime}
           </div>
         </div>
-      )}
+      </header>
 
-      {/* ═══════════════════════════════ CALL MODE ═══════════════════════════ */}
-      {mode === 'call' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* LOBBY OR MAIN CALL */}
+      {!inRoom && mode === 'call' ? (
+        <div className="flex-1 flex items-center justify-center relative z-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2rem] w-full max-w-md shadow-2xl flex flex-col gap-6">
+            <div className="text-center">
+              <div className="mx-auto w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-4 border border-indigo-500/30">
+                <Users className="text-indigo-400 w-6 h-6" />
+              </div>
+              <h2 className="text-2xl font-semibold mb-2">Join Session</h2>
+              <p className="text-sm text-gray-400">Enter your name and the room code to connect.</p>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <input
+                value={userName}
+                onChange={e => setUserName(e.target.value)}
+                placeholder="Your Name"
+                className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+              <input
+                value={roomInput}
+                onChange={e => setRoomInput(normalizeRoomCode(e.target.value))}
+                onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
+                placeholder="ROOM CODE"
+                maxLength={8}
+                className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors uppercase tracking-widest text-center font-mono font-bold"
+              />
+              <motion.button onClick={handleJoinRoom} className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 font-medium transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                Join Call
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden px-4 pb-4 gap-4 relative z-10">
+          
+          {/* MAIN VIDEO AREA */}
+          <div className="flex-1 relative rounded-[2rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex items-center justify-center">
+            
+            {/* The Main Video Stream (Remote in Call, Local in Solo) */}
+            {mode === 'call' ? (
+              <>
+                <video 
+                  ref={attachRemoteVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${callStatus === 'connected' ? 'opacity-100' : 'opacity-0'}`} 
+                />
+                {callStatus !== 'connected' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-gray-400 z-10">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <p>{callStatus === 'waiting' ? 'Waiting for partner to join...' : 'Connecting...'}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+               <>
+                  <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none" />
+                  {!isActive && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-4 z-10">
+                       <button onClick={handleStart} className="bg-indigo-600 px-6 py-3 rounded-full font-medium hover:bg-indigo-500">Start Camera</button>
+                    </div>
+                  )}
+               </>
+            )}
 
-          {/* Join panel */}
-          <AnimatePresence>
-            {!inRoom && (
-              <motion.div
-                key="join"
-                initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                className="card"
-                style={{ background: 'var(--accent-softer)', borderColor: 'var(--accent-border)' }}
+            {/* Dark gradient for text readability */}
+            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+
+            {/* Top Left Name Tag (Call mode) */}
+            {mode === 'call' && callStatus === 'connected' && (
+              <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3">
+                <div className="flex items-end gap-1 h-3">
+                  {[1,2,3,4,5].map(i => (
+                    <motion.div key={i} animate={{ height: ['4px', '12px', '4px'] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }} className="w-1 bg-emerald-400 rounded-full" />
+                  ))}
+                </div>
+                <span className="text-sm font-medium">{peerName || 'Partner'}</span>
+              </div>
+            )}
+
+            {/* Top Right Tracking Badge */}
+            {(mode === 'solo' || (mode === 'call' && callStatus === 'connected')) && isAslActive && (
+              <div className={`absolute top-6 ${mode === 'call' ? 'left-40' : 'right-6'} bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2`}>
+                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                 <span className="text-xs font-medium text-indigo-300">AI Tracking Active</span>
+              </div>
+            )}
+
+            {/* PiP Local Video (Call mode) */}
+            {mode === 'call' && (
+              <motion.div 
+                drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
+                className="absolute top-6 right-6 w-56 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl cursor-move z-20"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <motion.div
-                    animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                  >
-                    <Link2 size={16} style={{ color: 'var(--accent)' }} />
-                  </motion.div>
-                  <p style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Join a Room</p>
+                <video ref={(el) => {
+                  videoRef.current = el;
+                  localVideoRef.current = el;
+                  if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream();
+                }} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none" />
+                
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <div className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
+                    {userName || 'You'}
+                  </div>
+                  {isMuted && <div className="bg-red-500/80 p-1.5 rounded-full"><VolumeX className="w-3 h-3" /></div>}
                 </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.6 }}>
-                  Both users enter the <strong style={{ color: 'var(--text-primary)' }}>same room code</strong> to connect.
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    value={roomInput}
-                    onChange={e => setRoomInput(normalizeRoomCode(e.target.value))}
-                    onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
-                    placeholder="ROOM CODE"
-                    maxLength={8}
-                    className="input-field"
-                    style={{ flex: 1, fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '0.2em', fontWeight: 700, textAlign: 'center' }}
-                  />
-                  <motion.button onClick={handleJoinRoom} className="btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: roomInput.trim() ? 1 : 0.5, flexShrink: 0 }}
-                    whileHover={{ scale: 1.03, boxShadow: '0 0 20px var(--accent-glow)' }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Phone size={14} /> Join
-                  </motion.button>
+              </motion.div>
+            )}
+
+            {/* Real-time Translation Overlay */}
+            <AnimatePresence>
+              {(sentence.length > 0 || translatedText) && isAslActive && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                  className="absolute bottom-28 max-w-4xl w-[90%] bg-black/50 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden z-20"
+                >
+                  {/* Shimmer effect */}
+                  <motion.div animate={{ backgroundPosition: ['200% 0', '-200% 0'] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }} className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.3), transparent)', backgroundSize: '200% 100%' }} />
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 bg-indigo-500/20 rounded-lg"><MessageSquare className="w-4 h-4 text-indigo-400" /></div>
+                      <span className="text-xs font-bold text-indigo-300 tracking-wider uppercase flex items-center gap-2">
+                        {mode === 'call' && callStatus === 'connected' ? `${peerName || 'PARTNER'} TRANSLATING FROM ISL` : 'TRANSLATING FROM ISL'}
+                        {isTranslating && (
+                          <span className="flex gap-1">
+                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
+                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
+                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    
+                    <p className="text-3xl md:text-4xl font-medium leading-tight tracking-tight text-white drop-shadow-lg font-serif">
+                      "{getDisplayText() || getText()}"
+                    </p>
+
+                    {/* Suggestions */}
+                    {suggestions.length > 0 && (
+                      <div className="flex gap-2 mt-4 overflow-x-auto pb-2 no-scrollbar">
+                        {suggestions.map((s, i) => (
+                          <button key={i} onClick={() => applySuggestion(s)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm hover:bg-white/10 transition-colors whitespace-nowrap">
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Floating Control Bar */}
+            <div className="absolute bottom-6 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl z-30">
+               <button onClick={() => setIsMuted(!isMuted)} className={`p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`} title="Mute">
+                 {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+               </button>
+               <button onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }} className={`p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`} title="Video">
+                 {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+               </button>
+               <button onClick={() => setIsAslActive(!isAslActive)} className={`p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`} title="Toggle ASL">
+                 <Sparkles className="w-5 h-5" />
+               </button>
+               <div className="w-px h-8 bg-white/10 mx-2" />
+               <button className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Share Screen">
+                 <Monitor className="w-5 h-5" />
+               </button>
+               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`} title={mode === 'call' ? "Chat" : "Transcript"}>
+                 <MessageSquare className="w-5 h-5" />
+               </button>
+               <button className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Settings">
+                 <Settings className="w-5 h-5" />
+               </button>
+               <div className="w-px h-8 bg-white/10 mx-2" />
+               <button onClick={mode === 'call' ? handleLeaveRoom : handleStop} className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]" title="Leave">
+                 <PhoneOff className="w-4 h-4" /> Leave
+               </button>
+            </div>
+
+          </div>
+
+          {/* RIGHT SIDEBAR */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div 
+                initial={{ width: 0, opacity: 0 }} animate={{ width: 380, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
+                className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col overflow-hidden shrink-0 z-20"
+              >
+                {/* Tabs */}
+                <div className="flex p-2 bg-black/20">
+                  <button onClick={() => setSidebarTab('transcript')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${sidebarTab === 'transcript' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>Transcript</button>
+                  {mode === 'call' && (
+                    <button onClick={() => setSidebarTab('chat')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${sidebarTab === 'chat' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                      Chat <span className="bg-indigo-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">2</span>
+                    </button>
+                  )}
                 </div>
+
+                {/* Content area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {/* Confidence Monitor */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+                     <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
+                     <div>
+                       <p className="text-lg font-bold">{prediction?.hand_detected ? prediction.sign : '—'}</p>
+                       <p className="text-xs text-gray-400">{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand'}</p>
+                     </div>
+                  </div>
+
+                  <h3 className="text-sm font-semibold text-gray-300">Conversation</h3>
+
+                  {/* Chat History */ }
+                  {chatMessages.map(msg => (
+                     <div key={msg.id} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${msg.sender === 'Me' ? 'bg-indigo-600' : 'bg-gray-600'}`}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
+                        <span className="text-sm font-medium">{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
+                        <span className="text-xs text-gray-500">{msg.time}</span>
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed">
+                        {msg.text}
+                      </p>
+                    </div>
+                  ))}
+
+                  {/* Real-time translated text appending */}
+                  {(translatedText || getText()) && (
+                     <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-indigo-600/50">Me</div>
+                        <span className="text-sm font-medium">{userName || 'You'}</span>
+                        <span className="text-xs text-gray-500">Now</span>
+                        {isAslActive && <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded">ASL</span>}
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
+                        {getDisplayText() || getText()}
+                      </p>
+                    </div>
+                  )}
+
+                  {mode === 'call' && peerSentence && (
+                     <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-gray-600">{peerName ? peerName[0] : 'P'}</div>
+                        <span className="text-sm font-medium">{peerName || 'Partner'}</span>
+                        <span className="text-xs text-gray-500">Now</span>
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
+                        {peerSentence}
+                      </p>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Input area */}
+                {mode === 'call' && (
+                  <div className="p-4 bg-black/20 border-t border-white/5">
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                        placeholder="Type to speak or chat..." 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-indigo-500" 
+                      />
+                      <button onClick={handleSendChat} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center hover:bg-indigo-500 transition-colors">
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-500 text-center mt-2 font-mono">Press Enter to send</p>
+                  </div>
+                )}
+
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Active call */}
-          {inRoom && (
-            <>
-              {/* Status bar */}
-              <div className="card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <motion.span
-                    animate={callStatus === 'connected'
-                      ? { boxShadow: [`0 0 0 0 ${meta.glow}`, `0 0 0 6px transparent`] }
-                      : {}}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    style={{ width: 9, height: 9, borderRadius: '50%', background: meta.dot, display: 'inline-block' }}
-                  />
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: meta.color }}>{meta.label}</span>
-                  {mySlot && <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', background: 'var(--bg-inset)', padding: '2px 8px', borderRadius: 6, fontFamily: 'monospace' }}>{mySlot}</span>}
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-ghost)', fontFamily: 'monospace' }}>#{roomInput}</span>
-                </div>
-                <motion.button onClick={handleLeaveRoom}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--red-soft)', border: '1px solid var(--red-border)', color: 'var(--red)', fontSize: '0.75rem', fontWeight: 600 }}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                >
-                  <PhoneOff size={12} /> Leave
-                </motion.button>
-              </div>
-
-              {/* Incoming suggestion from partner */}
-              <IncomingSuggestionBanner
-                text={peerSuggestion}
-                onDismiss={() => {/* hook handles it */}}
-              />
-
-              {/* 2-panel video grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-                {/* YOU */}
-                <VideoPanel
-                  label="You" slot={mySlot} isLive={isActive}
-                  videoRef={(el) => {
-                    videoRef.current = el;
-                    localVideoRef.current = el;
-                    const stream = getStream();
-                    if (el && stream && el.srcObject !== stream) {
-                      el.srcObject = stream; el.play?.().catch(() => {});
-                    }
-                  }}
-                  canvasRef={canvasRef}
-                  hideCanvas
-                  sentence={sentence}
-                  chipColor="accent"
-                  accentColor="var(--accent)"
-                  statusEl={isActive && (
-                    <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.68rem', color: 'var(--red)', marginLeft: 'auto' }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'block' }} /> LIVE
-                    </motion.span>
-                  )}
-                  controls={
-                    <div style={{ display: 'flex', gap: 6, padding: '8px 12px', flexWrap: 'wrap' }}>
-                      {!isActive
-                        ? <button onClick={handleStart} disabled={!backendReady} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', opacity: backendReady ? 1 : 0.5 }}><Video size={13} /> Camera</button>
-                        : <button onClick={handleStop} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--red-soft)', border: '1px solid var(--red-border)', color: 'var(--red)' }}><VideoOff size={13} /> Stop</button>}
-                      <button onClick={handleReset} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem' }}><RotateCcw size={12} /></button>
-                    </div>
-                  }
-                />
-
-                {/* PARTNER */}
-                <VideoPanel
-                  label="Partner" isLive={callStatus === 'connected'}
-                  videoRef={attachRemoteVideoRef}
-                  sentence={peerSentence ? peerSentence.split(' ').map((w, i) => ({ word: w, confidence: 1 })) : []}
-                  chipColor="blue"
-                  accentColor="var(--blue)"
-                  statusEl={callStatus === 'connected' && (
-                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.68rem', color: 'var(--green)', marginLeft: 'auto' }}>
-                      <CheckCircle2 size={11} /> Connected
-                    </motion.span>
-                  )}
-                  placeholder={
-                    callStatus !== 'connected' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                        {callStatus === 'waiting' || callStatus === 'connecting'
-                          ? <Loader2 size={28} style={{ color: 'var(--text-ghost)', animation: 'spin 1s linear infinite' }} />
-                          : <Users size={28} style={{ color: 'var(--text-ghost)' }} />}
-                        <p style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
-                          {callStatus === 'waiting' ? 'Waiting for partner…' : 'No partner yet'}
-                        </p>
-                      </div>
-                    )
-                  }
-                />
-              </div>
-
-              {/* Call bottom: detection + sentence */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 12 }}>
-                <DetectionCard pct={pct} prediction={prediction} holdCount={holdCount} compact />
-                <SentenceCard
-                  sentence={sentence} suggestions={suggestions}
-                  getText={getText} getDisplayText={getDisplayText}
-                  translatedText={translatedText} isTranslating={isTranslating}
-                  language={language} langConfig={LANG_CONFIG}
-                  handleCopy={handleCopy}
-                  handleSave={handleSave} handleSpeak={handleSpeak}
-                  isSpeaking={isSpeaking} applySuggestion={applySuggestion}
-                  speechRate={speechRate} setSpeechRate={setSpeechRate}
-                  mode={mode} callStatus={callStatus}
-                  compact
-                />
-              </div>
-            </>
-          )}
         </div>
       )}
-
-      {/* Keyframe animations */}
-      <style>{`
-        @keyframes spin  { to { transform: rotate(360deg); } }
-        @keyframes ping  { 75%, 100% { transform: scale(2); opacity: 0; } }
-        @media (max-width: 768px) {
-          .translator-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-/* ─── VideoPanel subcomponent ───────────────────────────────────────────────── */
-function VideoPanel({ label, slot, isLive, videoRef, canvasRef, hideCanvas, sentence, chipColor, accentColor, statusEl, controls, placeholder }) {
-  return (
-    <motion.div
-      className="card"
-      style={{ padding: 0, overflow: 'hidden' }}
-      whileHover={isLive ? { boxShadow: `0 0 24px ${accentColor}44` } : {}}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Panel header */}
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: chipColor === 'accent' ? 'var(--accent-soft)' : 'var(--blue-soft)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {chipColor === 'accent'
-            ? <User size={13} style={{ color: 'var(--accent)' }} />
-            : <UserCheck size={13} style={{ color: 'var(--blue)' }} />}
-        </div>
-        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-          {label}{slot ? ` · ${slot}` : ''}
-        </span>
-        {statusEl}
-      </div>
-
-      {/* Video */}
-      <div style={{ position: 'relative', aspectRatio: '4/3', background: 'var(--bg-inset)' }}>
-        <video ref={videoRef} autoPlay playsInline muted={chipColor === 'accent'}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }} />
-        {/* Canvas MUST stay in DOM so captureFrame() always has a valid drawing surface.
-             hideCanvas only makes it visually invisible — never unmounts it. */}
-        {canvasRef && (
-          <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none', display: hideCanvas ? 'none' : 'block' }} />
-        )}
-        {placeholder && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-inset)' }}>
-            {placeholder}
-          </div>
-        )}
-        {/* Glowing border when live */}
-        {isLive && (
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }}
-            style={{ position: 'absolute', inset: 0, border: `2px solid ${accentColor}`, pointerEvents: 'none', borderRadius: 0 }}
-          />
-        )}
-      </div>
-
-      {/* Word chips */}
-      <div style={{ padding: '10px 14px', minHeight: 50, borderTop: '1px solid var(--border)' }}>
-        {sentence.length === 0
-          ? <p style={{ color: 'var(--text-ghost)', fontSize: '0.78rem' }}>Signs appear here…</p>
-          : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              <AnimatePresence>
-                {sentence.map((s, i) => <WordChip key={`${s.word}-${i}`} word={s.word} index={i} color={chipColor} />)}
-              </AnimatePresence>
-            </div>
-          )}
-      </div>
-      {controls && controls}
-    </motion.div>
-  );
-}
-
-/* ─── Detection card subcomponent ────────────────────────────────────────────── */
-function DetectionCard({ pct, prediction, holdCount, compact }) {
-  return (
-    <div className="card" style={compact ? { padding: '12px 14px' } : {}}>
-      <p className="section-label">Current Detection</p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={prediction?.sign || 'idle'}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              style={{ fontSize: compact ? '1.2rem' : '1.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}
-            >
-              {prediction?.hand_detected ? prediction.sign : '—'}
-            </motion.p>
-          </AnimatePresence>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: 4 }}>
-            {prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand in frame'}
-          </p>
-        </div>
-      </div>
-      {prediction?.hand_detected && holdCount > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-faint)', marginBottom: 3 }}>Holding…</p>
-          <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-            <motion.div
-              animate={{ width: `${(holdCount / 8) * 100}%` }}
-              style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent), var(--blue))', borderRadius: 2 }}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Sentence builder card subcomponent ─────────────────────────────────────── */
-function SentenceCard({
-  sentence, suggestions, getText, getDisplayText,
-  translatedText, isTranslating, language, langConfig,
-  handleCopy, handleSave, handleSpeak, isSpeaking,
-  speechRate, setSpeechRate,
-  applySuggestion, mode, callStatus, compact
-}) {
-  const cfg         = langConfig?.[language] || { full: 'English', bcp47: 'en-IN' };
-  const displayText = getDisplayText?.() || getText?.() || '';
-  const englishText = getText?.() || '';
-  const showTranslation = language !== 'en' && !!translatedText && translatedText !== englishText;
-
-  return (
-    <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, ...(compact ? { padding: '12px 14px' } : {}) }}>
-      <p className="section-label">Sentence Builder</p>
-
-      {/* English words (source) */}
-      <div style={{
-        minHeight: compact ? 50 : 70, padding: '0.75rem', background: 'var(--bg-inset)',
-        borderRadius: 10, border: '1px solid var(--border)',
-        display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6,
-      }}>
-        {sentence.length === 0
-          ? <p style={{ color: 'var(--text-ghost)', fontSize: '0.875rem', alignSelf: 'center' }}>Translated words appear here…</p>
-          : (
-            <AnimatePresence>
-              {sentence.map((s, i) => <WordChip key={`${s.word}-${i}`} word={s.word} index={i} />)}
-            </AnimatePresence>
-          )}
-      </div>
-
-      {/* Translated output panel */}
-      <AnimatePresence>
-        {language !== 'en' && (
-          <motion.div
-            key="translation-panel"
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{
-              padding: '0.6rem 0.75rem',
-              background: 'var(--accent-softer)',
-              border: '1px solid var(--accent-border)',
-              borderRadius: 10,
-              minHeight: 42,
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              {/* Language badge */}
-              <span style={{
-                fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.1em',
-                color: 'var(--accent)', background: 'var(--accent-soft)',
-                border: '1px solid var(--accent-border)', borderRadius: 4,
-                padding: '2px 6px', flexShrink: 0,
-              }}>{cfg.full.toUpperCase()}</span>
-
-              {isTranslating ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <motion.div
-                    animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: 12, height: 12, border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }}
-                  />
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Translating…</span>
-                </div>
-              ) : translatedText ? (
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={translatedText}
-                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4, margin: 0 }}
-                  >
-                    {translatedText}
-                  </motion.p>
-                </AnimatePresence>
-              ) : (
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-ghost)' }}>Translation will appear here…</span>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Suggestions */}
-      <AnimatePresence>
-        {suggestions.length > 0 && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-              <Lightbulb size={12} style={{ color: 'var(--yellow)' }} />
-              <span className="section-label" style={{ marginBottom: 0 }}>
-                Suggestions
-                {mode === 'call' && callStatus === 'connected' && (
-                  <span style={{ marginLeft: 6, fontSize: '0.6rem', color: 'var(--blue)', background: 'var(--blue-soft)', padding: '1px 6px', borderRadius: 9999, border: '1px solid var(--blue-border)' }}>
-                    shared with partner
-                  </span>
-                )}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {suggestions.slice(0, 3).map((s, i) => (
-                <motion.button
-                  key={i} onClick={() => applySuggestion(s)}
-                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  style={{
-                    textAlign: 'left', padding: '7px 10px', borderRadius: 8,
-                    fontSize: '0.78rem', cursor: 'pointer',
-                    background: 'var(--yellow-soft)', border: '1px solid var(--yellow-border)',
-                    color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                  }}
-                  whileHover={{ background: 'var(--yellow-soft)', color: 'var(--text-primary)', borderColor: 'var(--yellow)', scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span>{s}</span>
-                  {mode === 'call' && callStatus === 'connected' && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.65rem', color: 'var(--blue)', flexShrink: 0 }}>
-                      <Send size={10} /> Send
-                    </span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Speed presets + action buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
-
-        {/* Speed row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', userSelect: 'none' }}>SPEED</span>
-          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-inset)', borderRadius: 7, padding: 2, border: '1px solid var(--border)' }}>
-            {[0.75, 1, 1.25, 1.5, 2].map(rate => (
-              <button
-                key={rate}
-                onClick={() => setSpeechRate(rate)}
-                title={`${rate}× speed`}
-                style={{
-                  padding: '3px 8px', borderRadius: 5,
-                  fontSize: '0.68rem', fontWeight: 700,
-                  cursor: 'pointer', border: 'none',
-                  transition: 'all 0.15s',
-                  background: speechRate === rate ? 'var(--accent)' : 'transparent',
-                  color: speechRate === rate ? '#fff' : 'var(--text-muted)',
-                  minWidth: 36,
-                }}
-              >
-                {rate}×
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <motion.button onClick={handleCopy} className="btn-secondary" disabled={!sentence.length}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem' }}
-          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-          <Copy size={13} /> Copy
-        </motion.button>
-        <motion.button onClick={handleSave} className="btn-secondary" disabled={!sentence.length}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem' }}
-          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-          <Save size={13} /> Save
-        </motion.button>
-        <motion.button
-          onClick={handleSpeak}
-          disabled={!displayText || isSpeaking}
-          title={`Speak in ${cfg.full}`}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem',
-            background: isSpeaking ? 'var(--accent-soft)' : 'var(--bg-elevated)',
-            color: isSpeaking ? 'var(--accent)' : 'var(--text-muted)',
-            border: `1px solid ${isSpeaking ? 'var(--accent-border)' : 'var(--border)'}`,
-            padding: '0.45rem 0.8rem', borderRadius: 8, cursor: 'pointer',
-          }}
-          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-        >
-          {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
-          {isSpeaking ? `Speaking ${cfg.label}…` : `Speak ${cfg.label}`}
-        </motion.button>
-        </div> {/* end action buttons */}
-      </div> {/* end speed+actions column */}
     </div>
   );
 }
