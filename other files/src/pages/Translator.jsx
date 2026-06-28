@@ -1,5 +1,5 @@
 /**
- * Translator.jsx — SanketSetu ISL Translator (v3 — Premium UI)
+ * Translator.jsx — MudraVani ISL Translator (v3 — Premium UI)
  * Modes:
  *   solo — single-user translator with live webcam ML detection
  *   call — 2-user video call with real-time ISL translation relay

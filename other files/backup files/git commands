@@ -1,0 +1,61 @@
+git init               -----  Initialize a new Git repository
+
+git status             -----  Show current file changes/status
+
+git add .              -----  Stage all files for commit
+
+git add filename       -----  Stage a specific file
+
+git commit -m "msg"    -----  Save changes with a message
+
+git log                -----  Show commit history
+
+git log --oneline      -----  Show short commit history
+
+git log --graph --all  -----  Show commit tree/branches
+
+git clone URL          -----  Download a repository
+
+git pull               -----  Get latest changes from remote repo
+
+git push               -----  Upload commits to remote repo
+
+git branch             -----  List branches
+
+git branch name        -----  Create a new branch
+
+git switch name        -----  Switch to another branch
+
+git switch -c name     -----  Create and switch branch
+
+git checkout name      -----  Switch branch (older method)
+
+git merge branchname   -----  Merge branch into current branch
+
+git diff               -----  Show file changes
+
+git stash              -----  Temporarily save unfinished work
+
+git stash pop          -----  Restore stashed work
+
+git remote -v          -----  Show connected remote repositories
+
+git remote add origin URL  -----  Connect local repo to GitHub
+
+git rm filename        -----  Remove file from Git tracking
+
+git restore filename   -----  Undo file changes
+
+git reset --hard       -----  Reset all local changes
+
+git fetch              -----  Download remote updates only
+
+git rebase branch      -----  Reapply commits on another branch
+
+git tag                -----  Show tags/releases
+
+git tag v1.0           -----  Create a tag/version
+
+git config --global user.name "Name"   -----  Set Git username
+
+git config --global user.email "mail"  -----  Set Git email

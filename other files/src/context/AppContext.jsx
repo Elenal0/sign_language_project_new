@@ -28,7 +28,7 @@ function getSuggestions(words) {
 // ── Persistence helpers ───────────────────────────────────────────────────────
 function getInitialTheme() {
   try {
-    const stored = localStorage.getItem('sanketsetu-theme')
+    const stored = localStorage.getItem('MudraVani-theme')
     if (stored === 'light' || stored === 'dark') return stored
   } catch { /* ignore */ }
   // Respect OS preference as fallback
@@ -38,7 +38,7 @@ function getInitialTheme() {
 
 function getInitialHistory() {
   try {
-    const stored = localStorage.getItem('sanketsetu-history')
+    const stored = localStorage.getItem('MudraVani-history')
     if (stored) return JSON.parse(stored)
   } catch { /* ignore */ }
   return []
@@ -46,7 +46,7 @@ function getInitialHistory() {
 
 function getInitialTotalTranslations() {
   try {
-    const stored = localStorage.getItem('sanketsetu-total')
+    const stored = localStorage.getItem('MudraVani-total')
     if (stored) return parseInt(stored, 10) || 0
   } catch { /* ignore */ }
   return 0
@@ -70,7 +70,7 @@ export function AppProvider({ children }) {
     html.classList.toggle('dark', theme === 'dark')
     html.classList.toggle('light', theme === 'light')
     // Persist
-    try { localStorage.setItem('sanketsetu-theme', theme) } catch { /* ignore */ }
+    try { localStorage.setItem('MudraVani-theme', theme) } catch { /* ignore */ }
     // Remove transition class after animation
     const timeout = setTimeout(() => html.classList.remove('theme-transitioning'), 500)
     return () => clearTimeout(timeout)
@@ -78,11 +78,11 @@ export function AppProvider({ children }) {
 
   // ── Persist history ─────────────────────────────────────────────────────────
   useEffect(() => {
-    try { localStorage.setItem('sanketsetu-history', JSON.stringify(history)) } catch { /* ignore */ }
+    try { localStorage.setItem('MudraVani-history', JSON.stringify(history)) } catch { /* ignore */ }
   }, [history])
 
   useEffect(() => {
-    try { localStorage.setItem('sanketsetu-total', String(totalTranslations)) } catch { /* ignore */ }
+    try { localStorage.setItem('MudraVani-total', String(totalTranslations)) } catch { /* ignore */ }
   }, [totalTranslations])
 
   const toggleTheme = useCallback(() => {

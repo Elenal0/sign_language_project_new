@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArthSaathi — Executive Summary | KakushIN 10.0</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: #1a1a2e;
+      background: #e8e8e8;
+      font-size: 10.2pt;
+      line-height: 1.52;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 20px;
+      padding: 15mm 17mm 16mm;
+      position: relative;
+      page-break-after: always;
+      background: #fff;
+    }
+    .page:last-child { page-break-after: avoid; }
+    @media print { body { background: #fff; } .page { margin: 0; box-shadow: none; } }
+    @media screen { .page { box-shadow: 0 2px 20px rgba(0,0,0,0.12); } }
+
+    /* ── COVER ── */
+    .cover { padding: 0; display: flex; flex-direction: column; }
+    .cover-top-bar { height: 8mm; background: linear-gradient(90deg, #8b0000 0%, #c62828 50%, #b71c1c 100%); }
+    .cover-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 22mm 26mm; }
+    .cover-badge { display: inline-block; background: #8b0000; color: #fff; font-size: 7pt; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; padding: 5px 14px; border-radius: 2px; margin-bottom: 22px; width: fit-content; }
+    .cover-title { font-family: 'Playfair Display', serif; font-size: 52pt; font-weight: 900; color: #1a1a2e; line-height: 1.0; }
+    .cover-hindi { font-size: 22pt; color: #b71c1c; font-weight: 700; margin: 6px 0 20px; }
+    .cover-sub { font-size: 13pt; font-weight: 400; color: #555; line-height: 1.5; max-width: 420px; margin-bottom: 24px; }
+    .cover-tag { font-size: 11pt; font-weight: 600; color: #b71c1c; border-left: 4px solid #b71c1c; padding-left: 14px; font-style: italic; margin-bottom: 38px; }
+    .cover-divider { width: 60px; height: 2px; background: #b71c1c; margin-bottom: 24px; }
+    .cover-team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+    .cover-member { border: 1px solid #eee; border-top: 3px solid #b71c1c; border-radius: 0 0 5px 5px; padding: 12px 14px; background: #fafafa; }
+    .cover-member-name { font-size: 16pt; font-weight: 800; color: #1a1a2e; margin-bottom: 1px; }
+    .cover-member-spit { font-size: 7.5pt; font-weight: 700; color: #b71c1c; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
+    .cover-member-role { font-size: 7.5pt; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+    .cover-member-bio { font-size: 8.5pt; color: #666; line-height: 1.42; }
+    .cover-meta-row { display: flex; gap: 10px; flex-wrap: wrap; font-size: 9pt; color: #555; }
+    .cover-meta-item b { color: #1a1a2e; font-weight: 700; }
+    .cover-foot { background: #1a1a2e; padding: 8mm 26mm; display: flex; justify-content: space-between; align-items: center; }
+    .cover-foot-l { font-size: 8pt; color: #aaa; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+    .cover-foot-r { text-align: right; font-size: 9pt; color: #fff; font-weight: 700; }
+    .cover-foot-r span { color: #e57373; }
+
+    /* ── PAGE HEADER / FOOTER ── */
+    .ph { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b71c1c; padding-bottom: 5px; margin-bottom: 13px; }
+    .ph-l { font-size: 7.5pt; font-weight: 700; color: #b71c1c; letter-spacing: 1.5px; text-transform: uppercase; }
+    .ph-r { font-size: 7.5pt; color: #aaa; font-weight: 500; }
+    .pf { position: absolute; bottom: 8mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; font-size: 7pt; color: #bbb; border-top: 1px solid #eee; padding-top: 4px; }
+
+    /* ── TYPOGRAPHY ── */
+    h1 { font-family: 'Playfair Display', serif; font-size: 16pt; font-weight: 900; color: #1a1a2e; margin-bottom: 2px; }
+    .h1n { color: #b71c1c; font-family: 'Inter'; font-weight: 900; font-size: 13pt; margin-right: 6px; }
+    .sec-sub { font-size: 8.5pt; color: #999; font-weight: 500; margin-bottom: 11px; letter-spacing: 0.3px; }
+    h2 { font-size: 11pt; font-weight: 700; color: #1a1a2e; margin-top: 12px; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+    h3 { font-size: 10pt; font-weight: 700; color: #333; margin-top: 8px; margin-bottom: 3px; }
+    p { margin-bottom: 7px; text-align: justify; }
+    ul { margin-left: 14px; margin-bottom: 6px; }
+    li { margin-bottom: 2px; }
+
+    /* ── STATS ── */
+    .stats { display: flex; gap: 8px; margin: 10px 0; }
+    .stat { flex: 1; background: #fafafa; border: 1px solid #eee; border-top: 3px solid #b71c1c; padding: 8px 10px; text-align: center; border-radius: 0 0 5px 5px; }
+    .stat-n { font-size: 14pt; font-weight: 800; color: #b71c1c; line-height: 1.15; }
+    .stat-l { font-size: 7pt; color: #777; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.3; }
+
+    /* ── HIGHLIGHT BOX ── */
+    .hbox { background: linear-gradient(135deg, #fff8f8, #fff3f3); border-left: 4px solid #b71c1c; padding: 9px 13px; margin: 10px 0; border-radius: 0 5px 5px 0; }
+    .hbox p { margin: 0; font-weight: 500; color: #333; font-size: 9.8pt; }
+    .hbox .hl { font-size: 7pt; font-weight: 700; color: #b71c1c; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 2px; }
+
+    /* ── PERSONA GRID ── */
+    .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 8px 0; }
+    .pcard { border: 1px solid #e8e8e8; border-radius: 5px; padding: 8px 10px; }
+    .pcard-name { font-size: 10pt; font-weight: 700; color: #b71c1c; }
+    .pcard-desc { font-size: 7.5pt; color: #999; margin-bottom: 3px; }
+    .pcard-val { font-size: 8.5pt; color: #444; line-height: 1.35; }
+
+    /* ── TABLE ── */
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9pt; }
+    thead th { background: #1a1a2e; color: #fff; padding: 6px 9px; text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }
+    thead th:first-child { border-radius: 4px 0 0 0; }
+    thead th:last-child { border-radius: 0 4px 0 0; }
+    tbody td { padding: 5px 9px; border-bottom: 1px solid #eee; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+
+    /* ── CAPABILITY CARDS (match reference image exactly) ── */
+    .cap-row { display: flex; gap: 8px; margin: 9px 0; }
+    .cap { flex: 1; border: 1px solid #e8e8e8; border-radius: 5px; padding: 10px 11px; border-top: 3px solid; }
+    .cap.red   { border-top-color: #b71c1c; }
+    .cap.blue  { border-top-color: #1565c0; }
+    .cap.gold  { border-top-color: #e65100; }
+    .cap.green { border-top-color: #2e7d32; }
+    .cap.purple{ border-top-color: #6a1b9a; }
+    .cap-role { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+    .cap-role.red    { color: #b71c1c; }
+    .cap-role.blue   { color: #1565c0; }
+    .cap-role.gold   { color: #e65100; }
+    .cap-role.green  { color: #2e7d32; }
+    .cap-role.purple { color: #6a1b9a; }
+    .cap-title { font-size: 10.5pt; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .cap-desc { font-size: 8.5pt; color: #555; line-height: 1.38; }
+
+    /* ── AGENT/PIPELINE TWO-COL ── */
+    .two-col { display: flex; gap: 14px; }
+    .two-col > div { flex: 1; }
+
+    /* ── ARCHITECTURE ── */
+    .arch-layer { background: #f5f5f8; border: 1px solid #e0e0e0; border-radius: 5px; padding: 7px 12px; margin: 3px 0; text-align: center; font-size: 8.5pt; }
+    .arch-layer b { color: #1a1a2e; font-size: 9pt; }
+    .arch-sub { font-size: 7.5pt; color: #777; display: block; margin-top: 1px; }
+    .arch-arrow { text-align: center; font-size: 10pt; color: #aaa; margin: 1px 0; }
+
+    /* ── TAGS ── */
+    .tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 3px; }
+    .tag.p { background: #e8f5e9; color: #2e7d32; }
+    .tag.r { background: #e3f2fd; color: #1565c0; }
+
+    /* ── TECH SPEC GRID ── */
+    .ts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 8px 0; }
+    .ts-box { border: 1px solid #e0e0e0; border-radius: 5px; overflow: hidden; }
+    .ts-head { background: #1a1a2e; color: #fff; padding: 5px 10px; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .ts-row { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 10px; border-bottom: 1px solid #f0f0f0; font-size: 8pt; }
+    .ts-row:last-child { border-bottom: none; }
+    .ts-row:nth-child(even) { background: #fafafa; }
+    .ts-name { color: #333; }
+    .ts-ver { color: #b71c1c; font-weight: 700; font-family: monospace; font-size: 7.5pt; white-space: nowrap; }
+
+    /* ── CONTENTS ── */
+    .toc-entry { display: flex; align-items: baseline; gap: 6px; padding: 8px 0; border-bottom: 1px solid #f2f2f2; }
+    .toc-num { font-size: 9pt; font-weight: 700; color: #b71c1c; min-width: 20px; }
+    .toc-title { font-size: 9.5pt; font-weight: 600; color: #1a1a2e; flex: 1; }
+    .toc-dots { flex: 1; border-bottom: 1px dotted #ddd; margin: 0 8px; position: relative; top: -3px; }
+    .toc-page { font-size: 9pt; font-weight: 700; color: #555; }
+    .toc-sub-entry { display: flex; align-items: baseline; gap: 6px; padding: 3px 0 3px 20px; }
+    .toc-sub-entry .toc-title { font-size: 8.5pt; font-weight: 400; color: #777; }
+    .toc-group-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #b71c1c; margin: 16px 0 4px; }
+
+    /* ── APPENDIX ── */
+    .scope-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; margin: 8px 0; }
+    .scope-box { border: 1px solid #e0e0e0; border-radius: 5px; padding: 9px 11px; }
+    .scope-box.g  { border-top: 3px solid #2e7d32; }
+    .scope-box.rb { border-top: 3px solid #c62828; }
+    .scope-box.bl { border-top: 3px solid #1565c0; }
+    .scope-title { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .scope-title.g  { color: #2e7d32; }
+    .scope-title.rb { color: #c62828; }
+    .scope-title.bl { color: #1565c0; }
+    .scope-box li { font-size: 8pt; color: #444; margin-bottom: 3px; line-height: 1.35; }
+    .ver { font-family: monospace; color: #b71c1c; font-weight: 700; }
+    .note-cell { font-size: 7.5pt; color: #888; font-style: italic; }
+    .pdf-download-btn {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 9999;
+      border: 0;
+      border-radius: 6px;
+      background: #b71c1c;
+      color: #fff;
+      padding: 10px 16px;
+      font: 700 10pt Arial, sans-serif;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+    }
+    .pdf-download-btn:hover { background: #8f1515; }
+    @media print {
+      .pdf-download-btn { display: none !important; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<button class="pdf-download-btn" type="button" onclick="downloadPdf()">Download PDF</button>
+<div class="print-bar no-print">
+
+    <span>📄 Press <b>Ctrl+P</b> → Destination: <b>Save as PDF</b> → Check <b>"Background graphics"</b> → Save</span>
+
+    <button onclick="window.print()">⬇ Save as PDF</button>
+
+  </div>
+<!-- ════════════════ PAGE 1: COVER ════════════════ -->
+<div class="page cover">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-badge">Executive Summary — KakushIN 10.0</div>
+    <div class="cover-title">ArthSaathi</div>
+    <div class="cover-hindi">अर्थसाथी</div>
+    <div class="cover-sub">An Agentic AI System That Protects, Translates, and Simulates Financial Futures for Every Indian</div>
+    <div class="cover-tag">"See your financial future before you choose it."</div>
+    <div class="cover-divider"></div>
+
+    <div class="cover-team-grid">
+      <div style="grid-column: 1 / -1; margin-bottom: 6px;">
+        <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:4px;">
+          <div style="font-family:'Playfair Display',serif; font-size:26pt; font-weight:900; color:#b71c1c; letter-spacing:1px;">Team Yugma</div>
+          <div style="font-size:8pt; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:2px;">युग्म · A Pair Built to Solve Together</div>
+        </div>
+      </div>
+      <div class="cover-member">
+        <div class="cover-member-name">Kiran Harak</div>
+        <div class="cover-member-spit">SPIT</div>
+        <div class="cover-member-role">Team Lead &amp; Full-Stack Developer</div>
+        <div class="cover-member-bio">Final-year MCA candidate specialising in Python, Machine Learning, and full-stack system design. Leads product architecture, user experience, and end-to-end platform development for ArthSaathi.</div>
+      </div>
+      <div class="cover-member">
+        <div class="cover-member-name">Khushi Kumari</div>
+        <div class="cover-member-spit">SPIT</div>
+        <div class="cover-member-role">AI Engineer &amp; Simulation Developer</div>
+        <div class="cover-member-bio">Final-year MCA candidate specialising in Python, Machine Learning, and AI systems. Leads simulation modelling, intelligent workflows, and backend AI development for ArthSaathi.</div>
+      </div>
+    </div>
+
+    <div class="cover-meta-row">
+      <div><b>College:</b> Sardar Patel Institute of Technology, Mumbai</div>
+      <div style="color:#ccc">|</div>
+      <div><b>Programme:</b> Masters of Computer Applications</div>
+      <div style="color:#ccc">|</div>
+    </div>
+  </div>
+  <div class="cover-foot">
+    <div class="cover-foot-l">Nomura KakushIN 10.0</div>
+    <div class="cover-foot-r">ArthSaathi &nbsp;·&nbsp; <span>अर्थसाथी</span></div>
+  </div>
+</div>
+
+<!-- ════════════════ PAGE 2: CONTENTS ════════════════ -->
+<div class="page">
+  <div class="ph"><span class="ph-l">ArthSaathi — Table of Contents</span><span class="ph-r">Contents</span></div>
+  <h1 style="margin-bottom:18px;">Table of Contents</h1>
+
+  <div class="toc-group-label">Executive Summary — 2 Pages</div>
+
+  <div class="toc-entry">
+    <span class="toc-num">01</span>
+    <span class="toc-title">Brief Understanding of the Problem Statement</span>
+    <span class="toc-dots"></span>
+    <span class="toc-page">Page 1</span>
+  </div>
+  <div class="toc-sub-entry">
+    <span class="toc-dots" style="margin-left:0"></span>
+    <span class="toc-title">The consequence gap · Why existing solutions fail · Four user personas · Key statistics</span>
+    <span class="toc-page" style="font-size:8pt;color:#aaa">Page 1</span>
+  </div>
+
+  <div class="toc-entry">
+    <span class="toc-num">02</span>
+    <span class="toc-title">Proposed Solution — ArthSaathi Four Capabilities</span>
+    <span class="toc-dots"></span>
+    <span class="toc-page">Page 2</span>
+  </div>
+  <div class="toc-sub-entry">
+    <span class="toc-dots" style="margin-left:0"></span>
+    <span class="toc-title">Sentinel · Drishti · Kalpa · Prahari · Agent vs. Pipeline distinction</span>
+    <span class="toc-page" style="font-size:8pt;color:#aaa">Page 2</span>
+  </div>
+
+  <div class="toc-entry">
+    <span class="toc-num">03</span>
+    <span class="toc-title">Architecture</span>
+    <span class="toc-dots"></span>
+    <span class="toc-page">Page 2</span>
+  </div>
+
+
+
+  <div class="toc-group-label" style="margin-top:20px;">Appendix</div>
+
+  <div class="toc-entry">
+    <span class="toc-num">A</span>
+    <span class="toc-title">Appendix A — Full Technology Stack</span>
+    <span class="toc-dots"></span>
+    <span class="toc-page">Appx.</span>
+  </div>
+
+
+
+  <div class="pf"><span>ArthSaathi — अर्थसाथी | Nomura KakushIN 10.0</span><span>Team Yugma · SPIT Mumbai</span></div>
+</div>
+
+<!-- ════════════════ PAGE 3: EXEC SUMMARY — PAGE 1 ════════════════ -->
+<div class="page">
+  <div class="ph"><span class="ph-l">ArthSaathi — Executive Summary</span><span class="ph-r">Page 1</span></div>
+
+  <h1><span class="h1n">01</span> The Insight — A Consequence Gap, Not a Knowledge Gap</h1>
+  <div class="sec-sub">Why financial literacy interventions consistently fail — and what ArthSaathi does differently.</div>
+
+  <p>India has 530 million UPI users, yet more than 75% of Indian adults do not adequately understand basic financial concepts (NCFE-FLIS 2019). The instinct is to solve this with more education. The evidence says that doesn't work.</p>
+
+  <p>Traditional financial education with delayed delivery — workshops, articles, courses consumed days or weeks before a financial decision — explains only <b>0.1% of variance in financial behavior</b> (Fernandes, Lynch &amp; Netemeyer, 2014, <i>Management Science</i>). This doesn't mean all financial guidance is useless. It means guidance disconnected from the moment of decision has near-zero behavioral effect. ArthSaathi's approach is different: make financial consequences emotionally vivid <b>at the exact moment of decision</b>, not days later in a classroom.</p>
+
+  <div class="hbox">
+    <div class="hl">The Core Problem — Hot-Cold Empathy Gap</div>
+    <p>Loewenstein (2005) showed that people in "cold" states (calm, reflective) cannot predict their behavior in "hot" states (stressed, tempted, desperate). Rajesh knows predatory loans are bad. He takes one anyway because he's desperate. ArthSaathi's WhatsApp integration means the intervention happens on the same screen, in the same moment he receives the scam message — meeting him at the point of temptation, not hours later in a separate app.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n">₹48,021 Cr</div><div class="stat-l">Lost to financial fraud in 2025–26 (RBI)</div></div>
+    <div class="stat"><div class="stat-n">&gt;75%</div><div class="stat-l">Indian adults financially illiterate (NCFE-FLIS 2019)</div></div>
+    <div class="stat"><div class="stat-n">0.1%</div><div class="stat-l">Variance explained by delayed fin-ed (Fernandes 2014)</div></div>
+    <div class="stat"><div class="stat-n">₹2.7L Cr</div><div class="stat-l">Unclaimed govt. welfare benefits annually</div></div>
+  </div>
+
+  <h2>The Four Personas — Who ArthSaathi Serves</h2>
+  <div class="pgrid">
+    <div class="pcard">
+      <div class="pcard-name">Priya, 32</div>
+      <div class="pcard-desc">Teacher · Thane · ₹35,000/mo · Marathi</div>
+      <div class="pcard-val">Mis-sold a ULIP she didn't understand. WhatsApp flooded with scam investment tips. Bank advisor pushes products, not understanding. Needs a trusted voice in her language.</div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-name">Rajesh, 24</div>
+      <div class="pcard-desc">Gig Worker · Mumbai · ₹15–40K/mo · Hindi</div>
+      <div class="pcard-val">Variable income, no emergency fund. Falls for 130% APR loan apps when desperate. Banks turn him away. Needs bite-sized, in-the-moment guidance.</div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-name">Kisan, 45</div>
+      <div class="pcard-desc">Farmer · Karnataka · Seasonal Income · Kannada</div>
+      <div class="pcard-val">Eligible for PM-KISAN, PMFBY, and KCC but can't navigate the forms. Loses to middlemen. Takes informal loans at 36% APR during sowing season.</div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-name">Divya, 28</div>
+      <div class="pcard-desc">Visually Impaired · Pune · ₹25,000/mo</div>
+      <div class="pcard-val">Banking apps not screen-reader accessible. Shares credentials with family — compromising financial independence. Can't read EPF statements or compare products.</div>
+    </div>
+  </div>
+
+  <h2>Why Current Solutions Fail</h2>
+  <table>
+    <thead><tr><th style="width:26%;">Solution</th><th>Core Limitation</th></tr></thead>
+    <tbody>
+      <tr><td>AI Chatbots / Assistants</td><td>Reactive — waits for questions. No behavior-change mechanism. Lacks localized financial context and real-time decision-moment awareness.</td></tr>
+      <tr><td>Jupiter, Fi Money, Groww</td><td>Locked to one product ecosystem. Optimised to sell products, not build understanding. No scam detection, no cross-bank document analysis.</td></tr>
+      <tr><td>1Finance, Jar</td><td>High-barrier onboarding. No real-time crisis intervention at the moment a predatory product is offered. Nudges, not consequences.</td></tr>
+      <tr><td>Education Platforms</td><td>Delayed delivery = 0.1% behavioral effect (Fernandes 2014). Cannot reach decisions made in hot, stressed states.</td></tr>
+      <tr><td>Government Portals</td><td>Assume literacy and internet access. No proactive eligibility matching, no guided application flow, no language support.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pf"><span>ArthSaathi — अर्थसाथी | Nomura KakushIN 10.0</span><span>Team Yugma · SPIT Mumbai</span></div>
+</div>
+
+<!-- ════════════════ PAGE 4: EXEC SUMMARY — PAGE 2 ════════════════ -->
+<div class="page">
+  <div class="ph"><span class="ph-l">ArthSaathi — Executive Summary</span><span class="ph-r">Page 2</span></div>
+
+  <!-- CAPABILITIES — matches reference image exactly -->
+  <h1><span class="h1n">02</span> ArthSaathi — Four Capabilities</h1>
+  <div class="sec-sub">Designed to protect, translate, simulate, and guide. Will never lecture, judge, or sell.</div>
+
+  <!-- Row 1: three equal cards -->
+  <div class="cap-row">
+    <div class="cap red">
+      <div class="cap-role red">🛡 Protect</div>
+      <div class="cap-title">Sentinel</div>
+      <div class="cap-desc">Designed to analyze financial offers, URLs, and messages that users <b>actively forward</b> via WhatsApp. No device monitoring required. Trust Score is computed <b>deterministically</b> using a weighted formula (RBI/SEBI registration, APR threshold, pattern match, community reports, domain age). The LLM explains the score; it never generates it. Explainable warnings surface at least 2 RBI-registered alternatives per threat.</div>
+    </div>
+    <div class="cap blue">
+      <div class="cap-role blue">📄 Translate</div>
+      <div class="cap-title">Drishti</div>
+      <div class="cap-desc">Photograph any financial document — bank statement, insurance policy, loan agreement — to receive a <b>"nutrition label"</b>: true cost in rupees (not percentages), color-coded risk level, better alternatives, and suitability for your situation. In your language. The LLM extracts fields; a <b>deterministic Python engine</b> computes all financial math. The LLM will never touch a calculation.</div>
+    </div>
+    <div class="cap gold">
+      <div class="cap-role gold">⏳ Simulate — The Core</div>
+      <div class="cap-title">Kalpa</div>
+      <div class="cap-desc">Before any financial decision, users will experience the consequences. For fixed-return products (loans, FDs), the system will use <b>deterministic amortization math</b>. For variable-return products (SIPs, equity), projection scenarios at P25/P50/P75 will be derived from 10-year AMFI historical return data — pessimistic, expected, and optimistic paths shown side by side. Full Monte Carlo (10,000 iterations) is planned post-Grand Finale.</div>
+    </div>
+  </div>
+
+  <!-- Row 2: Prahari (narrow) + How They Work Together (wide) -->
+  <div class="cap-row" style="margin-top: 0;">
+    <div class="cap green" style="flex: 1.1;">
+      <div class="cap-role green">🚨 Guide</div>
+      <div class="cap-title">Prahari</div>
+      <div class="cap-desc">Will operate on two data streams: (a) user-reported financial events (income changes, loan applications) entered via WhatsApp, and (b) uploaded bank statements processed by Drishti. Detects anomaly patterns such as loan-to-loan cycling or repeated scam exposure, and triggers proactive outreach. Account Aggregator integration for consent-based transaction monitoring is on the <span class="tag r">ROADMAP</span>.</div>
+    </div>
+    <div class="cap purple" style="flex: 1.9;">
+      <div class="cap-role purple">🔗 How They Work Together</div>
+      <div class="cap-title">The Simulation Is the Nervous System</div>
+      <div class="cap-desc">Every capability feeds the simulation core. Sentinel detects a scam → Kalpa simulates "what if you'd fallen for it?" Drishti scans a ULIP → Kalpa simulates "ULIP vs. Term + SIP for 12 years." Prahari predicts a crisis → Kalpa simulates "with vs. without government scheme intervention." The simulation is not a standalone feature — it is the behavioral change engine that every other component activates. Rajesh forwards a predatory loan offer; within 60 seconds he sees his debt spiral to ₹67,000 and the MUDRA alternative saving him ₹55,800. The number is computed deterministically: ₹67,000 repayment (2.5%/week × 52 weeks on ₹10,000) minus ₹11,200 (MUDRA Shishu at 12% APR) = ₹55,800 saved.</div>
+    </div>
+  </div>
+
+  <!-- Agent vs Pipeline -->
+  <h2 style="margin-top: 8px;">Agent vs. Pipeline Distinction — Why It Matters</h2>
+  <div class="two-col">
+    <div>
+      <h3>True Agents (perceive → decide → act → adapt)</h3>
+      <ul style="font-size: 8.5pt;">
+        <li><b>Sentinel:</b> Perceives forwarded messages, decides risk via deterministic Trust Score, acts by surfacing alternatives, adapts as community reports grow.</li>
+        <li><b>Kalpa:</b> Perceives user's financial context, decides math model (deterministic vs. P25/P50/P75 projection), acts by generating animated consequence timeline, adapts narrative to language and literacy level.</li>
+        <li><b>Prahari:</b> Perceives user-reported events + uploaded statements, decides anomaly threshold, acts with proactive alerts, adapts intervention strategy based on user response history.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Pipeline Tools (input → deterministic output)</h3>
+      <ul style="font-size: 8.5pt;">
+        <li><b>Drishti:</b> OCR → field extraction → deterministic cost computation → nutrition label. No autonomy.</li>
+        <li><b>Vaani:</b> Wraps Bhashini API for STT → NMT → TTS. Translation middleware, not an agent.</li>
+        <li><b>Praman:</b> Logs every intervention, decision change, and outcome for impact measurement. A database writer, not an agent.</li>
+      </ul>
+      <p style="font-size: 8.5pt; color: #666; margin-top: 4px;">Calling a translation API wrapper an "agent" undermines the credibility of actual agentic components. This distinction signals architectural honesty.</p>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <h1 style="margin-top: 10px; font-size: 14pt;"><span class="h1n">03</span> Architecture</h1>
+  <div class="sec-sub" style="margin-bottom: 5px;">Labels: <span class="tag p">PROPOSED</span> Grand Finale Day 1 build &nbsp;|&nbsp; <span class="tag r">ROADMAP</span> post-Grand Finale development.</div>
+
+  <div class="arch-layer"><b>User Interfaces</b><span class="arch-sub">React 18 PWA <span class="tag p">PROPOSED</span> &nbsp;·&nbsp; WhatsApp Webhook (Meta Cloud API v19.0) <span class="tag p">PROPOSED</span> &nbsp;·&nbsp; IVR via Exotel (Post-GF)</span></div>
+  <div class="arch-arrow">↓</div>
+  <div class="arch-layer"><b>API Gateway — FastAPI 0.111.0</b> <span class="tag p">PROPOSED</span><span class="arch-sub">JWT + OTP Auth (python-jose 3.3.0) &nbsp;·&nbsp; Rate Limiting (slowapi 0.1.9) &nbsp;·&nbsp; TLS 1.3 / AES-256</span></div>
+  <div class="arch-arrow">↓</div>
+  <div class="arch-layer"><b>Language Layer — Bhashini / ULCA API (MeitY, GoI — Free)</b> <span class="tag p">PROPOSED</span><span class="arch-sub">STT → NMT → TTS &nbsp;·&nbsp; Hindi + Marathi + Kannada (Grand Finale) &nbsp;·&nbsp; 12 languages (Post-GF)</span></div>
+  <div class="arch-arrow">↓</div>
+  <div class="arch-layer"><b>Orchestrator — LangGraph 0.1.19 State Machine</b> <span class="tag p">PROPOSED</span><span class="arch-sub">Context Manager &nbsp;·&nbsp; Priority Router (Threat > Crisis > Document > Simulation) &nbsp;·&nbsp; Escalation Handler (confidence &lt;70% → human advisor)</span></div>
+  <div class="arch-arrow">↓</div>
+  <div class="arch-layer"><b>Agents: Sentinel · Kalpa · Prahari &nbsp;|&nbsp; Tools: Drishti · Vaani · Praman</b> <span class="tag p">PROPOSED</span><span class="arch-sub">In-process event queue (Grand Finale) &nbsp;·&nbsp; Redis 7.2.5 Streams (Post-GF) &nbsp;·&nbsp; Gemini 2.0 Flash · PaddleOCR 2.7.3</span></div>
+  <div class="arch-arrow">↓</div>
+  <div class="arch-layer"><b>Data Layer</b><span class="arch-sub">SQLite 3.45.3 + SQLAlchemy 2.0.31 (Grand Finale) <span class="tag p">PROPOSED</span> &nbsp;·&nbsp; PostgreSQL 16.3 + Qdrant 1.10.0 (Post-GF)</span></div>
+
+
+  <div class="pf"><span>ArthSaathi — अर्थसाथी | Nomura KakushIN 10.0</span><span>Team Yugma · SPIT Mumbai</span></div>
+</div>
+
+<!-- ════════════════ PAGE 5: APPENDIX A ════════════════ -->
+<div class="page">
+  <div class="ph"><span class="ph-l">Appendix A — Full Technology Stack</span><span class="ph-r">Appendix</span></div>
+  <h1>Appendix A: Full Technology Stack</h1>
+  <div class="sec-sub">Complete reference for pre-event environment configuration. Every dependency with exact version.</div>
+
+  <table style="font-size: 8.5pt; margin-top: 10px;">
+    <thead>
+      <tr>
+        <th style="width:22%;">Component / Tool</th>
+        <th style="width:16%;">Version</th>
+        <th style="width:28%;">Purpose</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">RUNTIME &amp; LANGUAGE</td></tr>
+      <tr><td>Python</td><td class="ver">3.11.9</td><td>Primary backend runtime</td><td class="note-cell">All backend services, math engine, AI orchestration</td></tr>
+      <tr><td>Node.js</td><td class="ver">20.14.0 LTS</td><td>Frontend build toolchain</td><td class="note-cell">Required for React/Vite build pipeline</td></tr>
+      <tr><td>Ubuntu Linux</td><td class="ver">22.04.4 LTS</td><td>Operating system</td><td class="note-cell">Grand Finale environment OS</td></tr>
+
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">BACKEND FRAMEWORK &amp; MIDDLEWARE</td></tr>
+      <tr><td>FastAPI</td><td class="ver">0.111.0</td><td>REST API framework (async)</td><td class="note-cell">All agent endpoints, webhook receiver</td></tr>
+      <tr><td>Uvicorn</td><td class="ver">0.30.1</td><td>ASGI server</td><td class="note-cell">Production-mode server for FastAPI</td></tr>
+      <tr><td>Pydantic</td><td class="ver">2.7.1</td><td>Data validation &amp; serialisation</td><td class="note-cell">Request/response schema enforcement</td></tr>
+      <tr><td>SQLAlchemy</td><td class="ver">2.0.31</td><td>ORM / database abstraction</td><td class="note-cell">SQLite (GF) → PostgreSQL migration path</td></tr>
+      <tr><td>aiosqlite</td><td class="ver">0.20.0</td><td>Async SQLite driver</td><td class="note-cell">Grand Finale database driver</td></tr>
+      <tr><td>python-jose</td><td class="ver">3.3.0</td><td>JWT token authentication</td><td class="note-cell">Access + refresh token lifecycle</td></tr>
+      
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">AI / ML / ORCHESTRATION</td></tr>
+      <tr><td>LangChain</td><td class="ver">0.2.5</td><td>LLM integration layer</td><td class="note-cell">Tool binding, prompt templates, chain execution</td></tr>
+      <tr><td>LangGraph</td><td class="ver">0.1.19</td><td>Agentic state machine orchestrator</td><td class="note-cell">Sentinel / Kalpa / Prahari agent workflows</td></tr>
+      <tr><td>google-generativeai</td><td class="ver">0.7.2</td><td>Gemini 2.0 Flash SDK</td><td class="note-cell">Structured output, narrative generation, classification</td></tr>
+      <tr><td>PaddleOCR</td><td class="ver">2.7.3</td><td>Document OCR engine</td><td class="note-cell">Drishti field extraction from financial documents</td></tr>
+      <tr><td>PaddlePaddle</td><td class="ver">2.6.1</td><td>Deep learning framework</td><td class="note-cell">Required PaddleOCR runtime dependency</td></tr>
+      <tr><td>numpy</td><td class="ver">1.26.4</td><td>Numerical computation</td><td class="note-cell">Amortisation schedules, array operations</td></tr>
+      <tr><td>pandas</td><td class="ver">2.2.2</td><td>AMFI data processing</td><td class="note-cell">Historical return data for P25/P50/P75 scenarios</td></tr>
+      <tr><td>scipy</td><td class="ver">1.13.1</td><td>Statistical percentile computation</td><td class="note-cell">P25/P50/P75 return distribution for Kalpa</td></tr>
+      <tr><td>Pillow</td><td class="ver">10.3.0</td><td>Image preprocessing</td><td class="note-cell">Document image normalisation before OCR</td></tr>
+      <tr><td>openai</td><td class="ver">1.30.5</td><td>LLM SDK fallback</td><td class="note-cell">Contingency if Gemini quota exceeded on demo day</td></tr>
+
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">FRONTEND</td></tr>
+      <tr><td>React</td><td class="ver">18.3.1</td><td>PWA / SPA UI framework</td><td class="note-cell">Primary user-facing interface</td></tr>
+      <tr><td>Vite</td><td class="ver">5.2.13</td><td>Frontend build tool</td><td class="note-cell">Dev server + production bundler</td></tr>
+      <tr><td>Tailwind CSS</td><td class="ver">3.4.4</td><td>Utility-first CSS framework</td><td class="note-cell">Responsive layout, WCAG color tokens</td></tr>
+      <tr><td>Chart.js</td><td class="ver">4.4.3</td><td>Animated consequence timeline</td><td class="note-cell">Kalpa debt spiral / savings growth animation</td></tr>
+      
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">DATABASE</td></tr>
+      <tr><td>SQLite</td><td class="ver">3.45.3</td><td>Embedded database (Grand Finale)</td><td class="note-cell">No external server required on demo day</td></tr>
+      <tr><td>PostgreSQL</td><td class="ver">16.3</td><td>Production database (Roadmap)</td><td class="note-cell">Post-Grand Finale scaling</td></tr>
+      
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">EXTERNAL APIS &amp; SERVICES</td></tr>
+      <tr><td>Gemini 2.0 Flash</td><td class="ver">gemini-2.0-flash</td><td>LLM for narration &amp; classification</td><td class="note-cell">Via google-generativeai SDK v0.7.2</td></tr>
+      <tr><td>Bhashini / ULCA API</td><td class="ver">v1 (MeitY — free)</td><td>STT → NMT → TTS Indic languages</td><td class="note-cell">Hindi, Marathi, Kannada — government API</td></tr>
+      <tr><td>Meta WhatsApp Cloud API</td><td class="ver">v19.0</td><td>WhatsApp message webhook</td><td class="note-cell">Receives forwarded messages from users</td></tr>
+      <tr><td>AMFI Historical NAV API</td><td class="ver">REST (public)</td><td>Mutual fund historical data</td><td class="note-cell">Feeds P25/P50/P75 return scenarios in Kalpa</td></tr>
+      <tr><td>RBI / SEBI / AMFI Registry</td><td class="ver">Public REST</td><td>Entity registration validation</td><td class="note-cell">Sentinel Trust Score — registration check (0–40 pts)</td></tr>
+
+      <tr><td colspan="4" style="background:#f0f0f5;font-weight:700;font-size:7.5pt;color:#1a1a2e;padding:5px 9px;letter-spacing:0.5px;">TESTING &amp; DEVOPS</td></tr>
+      <tr><td>pytest</td><td class="ver">8.2.2</td><td>Python test runner</td><td class="note-cell">Math engine, Trust Score, and API tests</td></tr>
+      <tr><td>pytest-asyncio</td><td class="ver">0.23.7</td><td>Async test support</td><td class="note-cell">Tests for async FastAPI routes</td></tr>
+      <tr><td>Git</td><td class="ver">2.45.2</td><td>Version control</td><td class="note-cell">Source code management</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pf"><span>ArthSaathi — अर्थसाथी | Nomura KakushIN 10.0</span><span>Team Yugma · SPIT Mumbai</span></div>
+</div>
+
+<script>
+  function downloadPdf() {
+    const button = document.querySelector('.pdf-download-btn');
+    button.style.display = 'none';
+
+    if (window.html2pdf) {
+      const options = {
+        margin: 0,
+        filename: 'ArthSaathi_ExecutiveSummary.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], before: '.page' }
+      };
+
+      html2pdf()
+        .set(options)
+        .from(document.body)
+        .save()
+        .finally(function () {
+          button.style.display = '';
+        });
+      return;
+    }
+
+    window.print();
+    button.style.display = '';
+  }
+</script>
+</body>
+</html>

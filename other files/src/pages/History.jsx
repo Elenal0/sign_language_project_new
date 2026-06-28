@@ -65,7 +65,7 @@ export default function History() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sanketsetu_history_${new Date().toISOString().slice(0,10)}.csv`
+    a.download = `MudraVani_history_${new Date().toISOString().slice(0,10)}.csv`
     a.click()
     showToast('History exported as CSV', 'success')
   }
