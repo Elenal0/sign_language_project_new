@@ -1,8 +1,7 @@
-import { useRef, useEffect, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { Canvas, useFrame, useThree, addAfterEffect, invalidate } from '@react-three/fiber'
 import { Sparkles, Stars } from '@react-three/drei'
-import { EffectComposer, Bloom, ChromaticAberration, Vignette } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import FloatingRocks from './FloatingRocks'
 
@@ -58,9 +57,12 @@ function CameraController({ mouseRef }) {
   return null
 }
 
-// Animated fog color that slowly shifts hue
+// Animated fog color that slowly shifts hue — throttled to every 10 frames
 function DynamicFog() {
+  const frameCount = useRef(0)
   useFrame(({ clock, scene }) => {
+    frameCount.current++
+    if (frameCount.current % 10 !== 0) return
     const t = clock.getElapsedTime()
     const hue = 0.74 + Math.sin(t * 0.1) * 0.05
     scene.fog.color.setHSL(hue, 0.6, 0.06)
@@ -71,53 +73,89 @@ function DynamicFog() {
 export default function CinematicScene() {
   const mouseRef = useRef({ x: 0, y: 0 })
   const [ready, setReady] = useState(false)
+  const rafRef = useRef(null)
+  const containerRef = useRef(null)
 
   useEffect(() => {
+    // Mouse parallax
     const onMove = (e) => {
       mouseRef.current.x = (e.clientX / window.innerWidth  - 0.5) * 2
       mouseRef.current.y = -(e.clientY / window.innerHeight - 0.5) * 2
     }
-    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mousemove', onMove, { passive: true })
+
     // Slight fade-in delay so we don't show a blank frame
     const t = setTimeout(() => setReady(true), 300)
-    return () => { window.removeEventListener('mousemove', onMove); clearTimeout(t) }
+
+    // Manual RAF ticker for frameloop="demand" — keeps animation alive but
+    // pauses automatically when the tab is hidden (visibilitychange).
+    let running = true
+    const tick = () => {
+      if (!running) return
+      invalidate()
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        running = false
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      } else {
+        running = true
+        tick()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    tick()
+
+    return () => {
+      running = false
+      window.removeEventListener('mousemove', onMove)
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      clearTimeout(t)
+    }
   }, [])
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
         background: '#0a0614',
         opacity: ready ? 1 : 0,
         transition: 'opacity 1s ease',
+        contain: 'strict',
+        willChange: 'opacity',
       }}
     >
       <Canvas
-        gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
-        dpr={[1, 1.5]}
+        gl={{ antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false, depth: true }}
+        dpr={[1, 1.2]}
         camera={{ position: [0, 0, 15], fov: 50 }}
-        frameloop="always"
+        frameloop="demand"
+        performance={{ min: 0.5 }}
       >
         {/* Background color */}
         <color attach="background" args={['#0a0614']} />
 
-        {/* Dynamic shifting fog */}
+        {/* Dynamic shifting fog — throttled */}
         <fogExp2 attach="fog" args={['#130a22', 0.013]} />
         <DynamicFog />
 
-        {/* Lighting setup — dramatic & directional */}
+        {/* Lighting setup */}
         <ambientLight intensity={0.2} color="#8b5cf6" />
         <directionalLight position={[5, 15, 10]} intensity={2.5} color="#e879f9" />
         <directionalLight position={[-10, -5, -20]} intensity={1} color="#38bdf8" />
         <pointLight position={[0, 0, -50]} intensity={80} color="#c084fc" distance={120} />
         <pointLight position={[20, 10, -80]} intensity={60} color="#f472b6" distance={100} />
 
-        {/* Deep-space star field far in the background */}
-        <Stars radius={200} depth={80} count={3000} factor={3} saturation={0.6} fade speed={0.5} />
+        {/* Deep-space star field — reduced count */}
+        <Stars radius={200} depth={80} count={1500} factor={3} saturation={0.6} fade speed={0.3} />
 
-        {/* Floating dust motes — two layers at different speeds */}
-        <Sparkles count={400} scale={120} size={1.5} speed={0.15} opacity={0.5} color="#e879f9" />
-        <Sparkles count={200} scale={60}  size={3}   speed={0.4}  opacity={0.3} color="#c084fc" />
+        {/* Floating dust motes — reduced counts */}
+        <Sparkles count={200} scale={120} size={1.5} speed={0.1} opacity={0.5} color="#e879f9" />
+        <Sparkles count={100} scale={60}  size={3}   speed={0.3} opacity={0.3} color="#c084fc" />
 
         {/* The rocks, rings, and wireframes */}
         <FloatingRocks />
@@ -125,21 +163,14 @@ export default function CinematicScene() {
         {/* Camera driven by scroll + mouse */}
         <CameraController mouseRef={mouseRef} />
 
-        {/* POST-PROCESSING: the secret weapon */}
-        <EffectComposer>
-          {/* Bloom makes emissive surfaces truly glow */}
+        {/* POST-PROCESSING — simplified (removed ChromaticAberration which was costly) */}
+        <EffectComposer multisampling={0}>
           <Bloom
-            intensity={2.5}
-            luminanceThreshold={0.2}
+            intensity={2.0}
+            luminanceThreshold={0.25}
             luminanceSmoothing={0.9}
             mipmapBlur
           />
-          {/* Chromatic aberration for a cinematic lens feel */}
-          <ChromaticAberration
-            blendFunction={BlendFunction.NORMAL}
-            offset={[0.0015, 0.0015]}
-          />
-          {/* Vignette darkens edges for focus */}
           <Vignette eskil={false} offset={0.2} darkness={0.7} />
         </EffectComposer>
       </Canvas>

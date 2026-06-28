@@ -2,7 +2,6 @@
 
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -12,12 +11,12 @@ export default defineConfig(({ mode }) => {
   const wsBackend   = `ws://localhost:${API_PORT}`
 
   return {
-    plugins: [react(), basicSsl()],
+    plugins: [react()],
     server: {
       port: 5174,
       strictPort: false,   // auto-increment port if 5173 is taken
       host: true,          // exposes to local network
-      https: true,         // required for camera access on Android/remote
+      // https handled by ngrok tunnel — no self-signed cert needed
       open: true,
       allowedHosts: [
         'localhost',
@@ -29,6 +28,10 @@ export default defineConfig(({ mode }) => {
         '.trycloudflare.com',
         'all',           // allow any host when accessed via ngrok tunnel
       ],
+      // Skip ngrok's free-tier browser warning interstitial for all visitors
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+      },
       proxy: {
         // REST endpoints
         '/health':  { target: httpBackend, changeOrigin: true, secure: false },

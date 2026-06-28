@@ -1,5 +1,5 @@
 /**
- * Translator.jsx — SanketSetu ISL Translator (v3 — Premium UI)
+ * Translator.jsx — MudraVani ISL Translator (v3 — Premium UI)
  * Modes:
  *   solo — single-user translator with live webcam ML detection
  *   call — 2-user video call with real-time ISL translation relay
@@ -14,7 +14,7 @@ import {
   Video, VideoOff, RotateCcw, Copy, Save, Volume2, VolumeX,
   AlertCircle, Wifi, WifiOff, Lightbulb,
   Phone, PhoneOff, Users, User, Link2, Loader2, UserCheck,
-  Sparkles, Zap, MessageSquare, CheckCircle2, Send, Settings, Monitor, Mic, MicOff, Maximize2, Minimize2,
+  Sparkles, Zap, MessageSquare, CheckCircle2, Send, Settings, Monitor, MonitorOff, Mic, MicOff, Maximize2, Minimize2,
 } from 'lucide-react';
 import { useWebcam }    from '../hooks/useWebcam';
 import { useVideoCall } from '../hooks/useVideoCall';
@@ -276,6 +276,7 @@ export default function Translator() {
     localVideoRef, status: callStatus, mySlot,
     peerSentence, peerWord, peerSuggestion, peerName, peerChat,
     attachRemoteVideoRef, joinRoom, leaveRoom, sendTranslation, sendSuggestion, sendChatMessage,
+    getPeerConnection,
   } = useVideoCall();
 
   const { addToHistory, showToast, getSuggestions } = useApp();
@@ -290,6 +291,8 @@ export default function Translator() {
   const [isVideoOn, setIsVideoOn]     = useState(true);
   const [isAslActive, setIsAslActive] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef(null);
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})), 1000);
     return () => clearInterval(t);
@@ -466,6 +469,62 @@ export default function Translator() {
     setMode(m); handleReset();
   };
 
+  // ── Real mic mute: toggle the audio track on the live stream ─────────────────
+  const handleMicToggle = useCallback(() => {
+    const stream = getStream();
+    if (stream) {
+      stream.getAudioTracks().forEach(t => { t.enabled = isMuted; }); // flip: muted=true means disable
+    }
+    setIsMuted(prev => !prev);
+  }, [getStream, isMuted]);
+
+  // ── Real screen share ─────────────────────────────────────────────────────────
+  const handleScreenShare = useCallback(async () => {
+    if (isScreenSharing) {
+      // Stop screen share, restore camera
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+      }
+      // Replace sender track back to camera
+      const camStream = getStream();
+      if (camStream) {
+        const videoTrack = camStream.getVideoTracks()[0];
+        if (videoTrack) {
+          const pc = getPeerConnection();
+          if (pc) {
+            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) sender.replaceTrack(videoTrack).catch(() => {});
+          }
+        }
+      }
+      setIsScreenSharing(false);
+      return;
+    }
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always', frameRate: 15 },
+        audio: false,
+      });
+      screenStreamRef.current = screenStream;
+      const screenTrack = screenStream.getVideoTracks()[0];
+      // Replace the sender's video track with screen
+      const pc = getPeerConnection();
+      if (pc) {
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) sender.replaceTrack(screenTrack).catch(() => {});
+      }
+      // Auto-stop when user clicks browser's 'Stop sharing'
+      screenTrack.onended = () => {
+        screenStreamRef.current = null;
+        setIsScreenSharing(false);
+      };
+      setIsScreenSharing(true);
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') console.warn('Screen share error:', err);
+    }
+  }, [isScreenSharing, getStream, getPeerConnection]);
+
   useEffect(() => {
     if (mode !== 'call' || !inRoom || !isActive) return;
     // Start detection whenever camera is active in a room, regardless of connection status
@@ -601,8 +660,20 @@ export default function Translator() {
               </>
             ) : (
                <>
-                  <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
-                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none" />
+                  {/* Video — mirrored for self-view */}
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ backfaceVisibility: 'hidden' }}
+                    className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                  />
+                  {/* Canvas is HIDDEN — only used for ML frame capture, not display */}
+                  <canvas
+                    ref={canvasRef}
+                    style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+                  />
                   {!isActive && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-4 z-10">
                        <button onClick={handleStart} className="bg-indigo-600 px-6 py-3 rounded-full font-medium hover:bg-indigo-500">Start Camera</button>
@@ -645,7 +716,6 @@ export default function Translator() {
                   localVideoRef.current = el;
                   if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream();
                 }} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none" />
                 
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
                   <div className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
@@ -702,30 +772,74 @@ export default function Translator() {
 
             {/* Floating Control Bar */}
             <div className="absolute bottom-6 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl z-30">
-               <button onClick={() => setIsMuted(!isMuted)} className={`p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`} title="Mute">
-                 {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-               </button>
-               <button onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }} className={`p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`} title="Video">
-                 {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-               </button>
-               <button onClick={() => setIsAslActive(!isAslActive)} className={`p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`} title="Toggle ASL">
-                 <Sparkles className="w-5 h-5" />
-               </button>
-               <div className="w-px h-8 bg-white/10 mx-2" />
-               <button className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Share Screen">
-                 <Monitor className="w-5 h-5" />
-               </button>
-               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`} title={mode === 'call' ? "Chat" : "Transcript"}>
-                 <MessageSquare className="w-5 h-5" />
-               </button>
-               <button className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Settings">
-                 <Settings className="w-5 h-5" />
-               </button>
-               <div className="w-px h-8 bg-white/10 mx-2" />
-               <button onClick={mode === 'call' ? handleLeaveRoom : handleStop} className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]" title="Leave">
-                 <PhoneOff className="w-4 h-4" /> Leave
-               </button>
+
+              {/* ── CALL-ONLY controls ── */}
+              {mode === 'call' && (
+                <>
+                  <button
+                    onClick={handleMicToggle}
+                    className={`p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
+                    title={isMuted ? 'Unmute mic' : 'Mute mic'}
+                  >
+                    {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={handleScreenShare}
+                    className={`p-3 rounded-full transition-colors ${isScreenSharing ? 'bg-blue-500/30 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-white/10 hover:bg-white/20'}`}
+                    title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+                  >
+                    {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+                  </button>
+                  <div className="w-px h-8 bg-white/10" />
+                </>
+              )}
+
+              {/* ── SHARED controls (both solo & call) ── */}
+              <button
+                onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}
+                className={`p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
+                title="Toggle camera"
+              >
+                {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setIsAslActive(!isAslActive)}
+                className={`p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`}
+                title="Toggle AI detection"
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`}
+                title={mode === 'call' ? 'Chat' : 'Transcript'}
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+
+              {/* ── CALL-ONLY: End call ── */}
+              {mode === 'call' && (
+                <>
+                  <div className="w-px h-8 bg-white/10" />
+                  <button
+                    onClick={handleLeaveRoom}
+                    className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+                    title="Leave call"
+                  >
+                    <PhoneOff className="w-4 h-4" /> Leave
+                  </button>
+                </>
+              )}
             </div>
+
+            {/* Screen-share badge */}
+            {isScreenSharing && (
+              <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-blue-500/20 backdrop-blur-md border border-blue-500/30 px-4 py-2 rounded-xl flex items-center gap-2 z-30">
+                <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-blue-400" />
+                <span className="text-xs font-medium text-blue-300">Sharing Screen</span>
+                <button onClick={handleScreenShare} className="ml-2 text-xs text-blue-400 hover:text-white underline">Stop</button>
+              </div>
+            )}
 
           </div>
 

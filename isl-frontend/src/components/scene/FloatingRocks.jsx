@@ -5,7 +5,7 @@ import * as THREE from 'three'
 const ROCK_DATA = (() => {
   const data = []
   // LAYER 1 — Giant foreground rocks with strong emissive glow
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 6; i++) {
     data.push({
       pos: [
         (Math.random() - 0.5) * 30,
@@ -14,7 +14,7 @@ const ROCK_DATA = (() => {
       ],
       rot: [Math.random() * Math.PI, Math.random() * Math.PI, 0],
       scale: 3 + Math.random() * 5,
-      detail: 2,
+      detail: 1,
       emissive: new THREE.Color().setHSL(0.75 + Math.random() * 0.15, 0.9, 0.35),
       emissiveIntensity: 0.6 + Math.random() * 0.8,
       speed: { rx: (Math.random() - 0.5) * 0.003, ry: (Math.random() - 0.5) * 0.004 },
@@ -22,7 +22,7 @@ const ROCK_DATA = (() => {
     })
   }
   // LAYER 2 — Mid rocks
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 15; i++) {
     data.push({
       pos: [
         (Math.random() - 0.5) * 55,
@@ -31,7 +31,7 @@ const ROCK_DATA = (() => {
       ],
       rot: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
       scale: 1 + Math.random() * 2.5,
-      detail: 1,
+      detail: 0,
       emissive: new THREE.Color().setHSL(0.7 + Math.random() * 0.2, 0.8, 0.25),
       emissiveIntensity: 0.3 + Math.random() * 0.5,
       speed: { rx: (Math.random() - 0.5) * 0.006, ry: (Math.random() - 0.5) * 0.007 },
@@ -39,7 +39,7 @@ const ROCK_DATA = (() => {
     })
   }
   // LAYER 3 — Tiny distant specks
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 14; i++) {
     data.push({
       pos: [
         (Math.random() - 0.5) * 80,
@@ -91,7 +91,7 @@ function EnergyRing({ z, color, radius, thickness, speed }) {
   })
   return (
     <mesh ref={ref} position={[0, 0, z]}>
-      <torusGeometry args={[radius, thickness, 3, 80]} />
+      <torusGeometry args={[radius, thickness, 3, 48]} />
       <meshStandardMaterial
         color="#000"
         emissive={color}

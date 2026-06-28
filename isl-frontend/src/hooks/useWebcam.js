@@ -13,6 +13,7 @@ const CALL_JPEG     = 0.5  // lower quality during call reduces encode CPU furth
 export function useWebcam() {
   const videoRef          = useRef(null)
   const canvasRef         = useRef(null)
+  const offscreenRef      = useRef(null)          // private offscreen canvas for frame capture
   const streamRef         = useRef(null)
   const timerRef          = useRef(null)             // setTimeout handle
   const lastTickRef       = useRef(0)
@@ -39,14 +40,21 @@ export function useWebcam() {
 
   const captureFrame = useCallback(() => {
     const video  = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas || video.readyState < 2) return null
+    if (!video || video.readyState < 2) return null
 
-    canvas.width  = video.videoWidth  || 640
-    canvas.height = video.videoHeight || 480
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', jpegQualityRef.current).split(',')[1]
+    const W = video.videoWidth  || 480
+    const H = video.videoHeight || 360
+
+    // Use an offscreen canvas so the visible canvas can be hidden
+    if (!offscreenRef.current) {
+      offscreenRef.current = document.createElement('canvas')
+    }
+    const oc = offscreenRef.current
+    oc.width  = W
+    oc.height = H
+    const ctx = oc.getContext('2d')
+    ctx.drawImage(video, 0, 0, W, H)
+    return oc.toDataURL('image/jpeg', jpegQualityRef.current).split(',')[1]
   }, [])
 
   const sendFrame = useCallback(async (base64) => {
@@ -107,6 +115,7 @@ export function useWebcam() {
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,   // ← mic track must be here so WebRTC can send it to the peer
         video: {
           width:       { ideal: 480 },
           height:      { ideal: 360 },

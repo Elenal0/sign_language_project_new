@@ -220,6 +220,9 @@ export function useVideoCall() {
 
   const leaveRoom = useCallback(() => { cleanup(); setStatus("idle"); }, [cleanup]);
 
+  // Expose PC reference so Translator can replaceTrack for screen share
+  const getPeerConnection = useCallback(() => pcRef.current, []);
+
   const sendTranslation = useCallback((word, sentence) => {
     const ws = chatWsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -246,6 +249,7 @@ export function useVideoCall() {
     peerSentence, peerWord, peerSuggestion, peerName, peerChat,
     attachRemoteVideoRef,
     joinRoom, leaveRoom,
+    getPeerConnection,
     sendTranslation, sendSuggestion, sendChatMessage,
   };
 }
