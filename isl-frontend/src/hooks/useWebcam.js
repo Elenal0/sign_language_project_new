@@ -4,7 +4,8 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 
 // Empty string = relative URL — Vite proxy routes it to localhost:8000
 // Works on both PC (localhost:5173) and Android (192.168.x.x:5173)
-const API_URL = ''
+const API_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const DEFAULT_FPS   = 4
 const CALL_FPS      = 2   // halved during active WebRTC call to free CPU for video encoding
 const DEFAULT_JPEG  = 0.7
