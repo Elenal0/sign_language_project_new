@@ -285,7 +285,7 @@ export default function Translator() {
   const [roomInput, setRoomInput]     = useState('');
   const [inRoom, setInRoom]           = useState(false);
   const [userName, setUserName]       = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab]   = useState('transcript');
   const [isMuted, setIsMuted]         = useState(false);
   const [isVideoOn, setIsVideoOn]     = useState(true);
@@ -298,12 +298,6 @@ export default function Translator() {
     return () => clearInterval(t);
   }, []);
 
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   const [sentence, setSentence]             = useState([]);
   const [language, setLanguage]             = useState('en');
@@ -874,36 +868,33 @@ export default function Translator() {
 
           </div>
 
-          {/* RIGHT SIDEBAR */}
+          {/* ── MOBILE BOTTOM SHEET (< md) ── */}
           <AnimatePresence>
             {isSidebarOpen && (
-              <motion.div 
-                initial={isMobile ? { y: '100%', opacity: 0 } : { width: 0, opacity: 0 }}
-                animate={isMobile ? { y: 0, opacity: 1 } : { width: 360, opacity: 1 }}
-                exit={isMobile ? { y: '100%', opacity: 0 } : { width: 0, opacity: 0 }}
-                className={isMobile
-                  ? "absolute inset-x-0 bottom-0 h-[62vh] z-40 bg-gray-950/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl flex flex-col overflow-hidden"
-                  : "bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col overflow-hidden shrink-0 z-20"
-                }
+              <motion.div
+                key="mobile-sidebar"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="md:hidden absolute inset-x-0 bottom-0 h-[65vh] z-40 bg-gray-950/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl flex flex-col overflow-hidden"
               >
-                {/* Mobile: drag handle + close button */}
-                {isMobile && (
-                  <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
-                    <div className="flex-1" />
-                    <div className="w-10 h-1 bg-white/20 rounded-full" />
-                    <div className="flex-1 flex justify-end">
-                      <button
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                        aria-label="Close panel"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
+                {/* Drag handle + close */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
+                  <div className="flex-1" />
+                  <div className="w-10 h-1 bg-white/20 rounded-full" />
+                  <div className="flex-1 flex justify-end">
+                    <button
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                      aria-label="Close panel"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
-                )}
+                </div>
                 {/* Tabs */}
                 <div className="flex p-2 bg-black/20 shrink-0">
                   <button onClick={() => setSidebarTab('transcript')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${sidebarTab === 'transcript' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>Transcript</button>
@@ -913,84 +904,130 @@ export default function Translator() {
                     </button>
                   )}
                 </div>
-
-                {/* Content area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                  {/* Confidence Monitor */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-                     <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
-                     <div>
-                       <p className="text-lg font-bold">{prediction?.hand_detected ? prediction.sign : '—'}</p>
-                       <p className="text-xs text-gray-400">{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand'}</p>
-                     </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                    <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
+                    <div>
+                      <p className="text-base font-bold">{prediction?.hand_detected ? prediction.sign : '—'}</p>
+                      <p className="text-xs text-gray-400">{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand'}</p>
+                    </div>
                   </div>
-
                   <h3 className="text-sm font-semibold text-gray-300">Conversation</h3>
-
-                  {/* Chat History */ }
                   {chatMessages.map(msg => (
-                     <div key={msg.id} className="flex flex-col gap-1">
+                    <div key={msg.id} className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${msg.sender === 'Me' ? 'bg-indigo-600' : 'bg-gray-600'}`}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
                         <span className="text-sm font-medium">{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
                         <span className="text-xs text-gray-500">{msg.time}</span>
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed">
-                        {msg.text}
-                      </p>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed">{msg.text}</p>
                     </div>
                   ))}
-
-                  {/* Real-time translated text appending */}
                   {(translatedText || getText()) && (
-                     <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-indigo-600/50">Me</div>
                         <span className="text-sm font-medium">{userName || 'You'}</span>
                         <span className="text-xs text-gray-500">Now</span>
                         {isAslActive && <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded">ASL</span>}
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
-                        {getDisplayText() || getText()}
-                      </p>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">{getDisplayText() || getText()}</p>
                     </div>
                   )}
-
                   {mode === 'call' && peerSentence && (
-                     <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-gray-600">{peerName ? peerName[0] : 'P'}</div>
                         <span className="text-sm font-medium">{peerName || 'Partner'}</span>
                         <span className="text-xs text-gray-500">Now</span>
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
-                        {peerSentence}
-                      </p>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">{peerSentence}</p>
                     </div>
                   )}
-
                 </div>
+                {mode === 'call' && (
+                  <div className="p-3 bg-black/20 border-t border-white/5 shrink-0">
+                    <div className="relative">
+                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} placeholder="Type to speak or chat..." className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-indigo-500" />
+                      <button onClick={handleSendChat} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center hover:bg-indigo-500 transition-colors"><Send className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                {/* Input area */}
+          {/* ── DESKTOP SIDE PANEL (md+) ── */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div
+                key="desktop-sidebar"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 360, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                className="hidden md:flex flex-col bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] overflow-hidden shrink-0 z-20"
+              >
+                {/* Tabs */}
+                <div className="flex p-2 bg-black/20 shrink-0">
+                  <button onClick={() => setSidebarTab('transcript')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${sidebarTab === 'transcript' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>Transcript</button>
+                  {mode === 'call' && (
+                    <button onClick={() => setSidebarTab('chat')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${sidebarTab === 'chat' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>
+                      Chat <span className="bg-indigo-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">2</span>
+                    </button>
+                  )}
+                </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+                    <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
+                    <div>
+                      <p className="text-lg font-bold">{prediction?.hand_detected ? prediction.sign : '—'}</p>
+                      <p className="text-xs text-gray-400">{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand'}</p>
+                    </div>
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-300">Conversation</h3>
+                  {chatMessages.map(msg => (
+                    <div key={msg.id} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${msg.sender === 'Me' ? 'bg-indigo-600' : 'bg-gray-600'}`}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
+                        <span className="text-sm font-medium">{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
+                        <span className="text-xs text-gray-500">{msg.time}</span>
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed">{msg.text}</p>
+                    </div>
+                  ))}
+                  {(translatedText || getText()) && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-indigo-600/50">Me</div>
+                        <span className="text-sm font-medium">{userName || 'You'}</span>
+                        <span className="text-xs text-gray-500">Now</span>
+                        {isAslActive && <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded">ASL</span>}
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">{getDisplayText() || getText()}</p>
+                    </div>
+                  )}
+                  {mode === 'call' && peerSentence && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-gray-600">{peerName ? peerName[0] : 'P'}</div>
+                        <span className="text-sm font-medium">{peerName || 'Partner'}</span>
+                        <span className="text-xs text-gray-500">Now</span>
+                      </div>
+                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">{peerSentence}</p>
+                    </div>
+                  )}
+                </div>
                 {mode === 'call' && (
                   <div className="p-4 bg-black/20 border-t border-white/5">
                     <div className="relative">
-                      <input 
-                        type="text" 
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                        placeholder="Type to speak or chat..." 
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-indigo-500" 
-                      />
-                      <button onClick={handleSendChat} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center hover:bg-indigo-500 transition-colors">
-                        <Send className="w-4 h-4" />
-                      </button>
+                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} placeholder="Type to speak or chat..." className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-indigo-500" />
+                      <button onClick={handleSendChat} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center hover:bg-indigo-500 transition-colors"><Send className="w-4 h-4" /></button>
                     </div>
                     <p className="text-[10px] text-gray-500 text-center mt-2 font-mono">Press Enter to send</p>
                   </div>
                 )}
-
               </motion.div>
             )}
           </AnimatePresence>
