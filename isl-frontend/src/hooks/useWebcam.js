@@ -78,8 +78,14 @@ export function useWebcam() {
     if (!isDetectingRef.current) return
 
     const t0 = performance.now()
-    const frame = captureFrame()
-    if (frame) await sendFrame(frame)
+const frame = captureFrame();
+
+console.log("Frame length:", frame?.length);
+console.log("Frame start:", frame?.substring(0, 50));
+
+if (frame) {
+    await sendFrame(frame);
+}
     const elapsed = performance.now() - t0
 
     // Compute display FPS based on actual interval
