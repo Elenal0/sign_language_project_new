@@ -298,6 +298,13 @@ export default function Translator() {
     return () => clearInterval(t);
   }, []);
 
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const [sentence, setSentence]             = useState([]);
   const [language, setLanguage]             = useState('en');
   const [translatedText, setTranslatedText] = useState('');
@@ -556,49 +563,72 @@ export default function Translator() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* HEADER */}
-      <header className="relative z-50 flex items-center justify-between px-6 py-4 shrink-0">
-        {/* Left: Branding & Status */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl">
-            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} className="p-1.5 bg-indigo-500/20 rounded-lg">
-              <Video className="w-4 h-4 text-indigo-400" />
-            </motion.div>
-            <h1 className="font-semibold text-sm tracking-wide">Drishya Vaani</h1>
-          </div>
-          
-          {(isActive || backendReady) && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-medium text-emerald-400">SignSync™ Active</span>
+      <header className="relative z-50 shrink-0">
+        {/* Row 1: Branding + Right controls */}
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
+          {/* Left: Branding & live indicator */}
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2 md:gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-3 md:px-4 py-2 rounded-2xl">
+              <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} className="p-1.5 bg-indigo-500/20 rounded-lg">
+                <Video className="w-4 h-4 text-indigo-400" />
+              </motion.div>
+              <h1 className="font-semibold text-sm tracking-wide">Drishya Vaani</h1>
             </div>
-          )}
+            {(isActive || backendReady) && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-xs font-medium text-emerald-400">SignSync™ Active</span>
+              </div>
+            )}
+          </div>
+
+          {/* Center (desktop only): Language & Mode switchers */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
+              {Object.entries(LANG_CONFIG).map(([code, cfg]) => (
+                <button key={code} onClick={() => setLanguage(code)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${language === code ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
+                  {cfg.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
+              {[{ id: 'solo', label: 'Solo', icon: User }, { id: 'call', label: 'Call', icon: Users }].map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => handleModeSwitch(id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === id ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Time + mobile live dot */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {(isActive || backendReady) && (
+              <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex sm:hidden w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            )}
+            <div className="hidden md:flex px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+              End-to-end Encrypted
+            </div>
+            <div className="text-[10px] md:text-sm font-medium text-gray-300 bg-white/5 px-2 md:px-3 py-1.5 rounded-xl border border-white/10">
+              {currentTime}
+            </div>
+          </div>
         </div>
 
-        {/* Center: Language & Mode */}
-        <div className="flex items-center gap-4">
+        {/* Row 2 (mobile only): Language & Mode switchers */}
+        <div className="flex md:hidden items-center justify-center gap-3 pb-2 px-4">
           <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
             {Object.entries(LANG_CONFIG).map(([code, cfg]) => (
-              <button key={code} onClick={() => setLanguage(code)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${language === code ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
+              <button key={code} onClick={() => setLanguage(code)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${language === code ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
                 {cfg.label}
               </button>
             ))}
           </div>
           <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
             {[{ id: 'solo', label: 'Solo', icon: User }, { id: 'call', label: 'Call', icon: Users }].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => handleModeSwitch(id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === id ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
-                <Icon className="w-3.5 h-3.5" /> {label}
+              <button key={id} onClick={() => handleModeSwitch(id)} className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${mode === id ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
+                <Icon className="w-3 h-3" /> {label}
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* Right: Security & Time */}
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-            End-to-end Encrypted
-          </div>
-          <div className="text-sm font-medium text-gray-300 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-            {currentTime}
           </div>
         </div>
       </header>
@@ -606,7 +636,7 @@ export default function Translator() {
       {/* LOBBY OR MAIN CALL */}
       {!inRoom && mode === 'call' ? (
         <div className="flex-1 flex items-center justify-center relative z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2rem] w-full max-w-md shadow-2xl flex flex-col gap-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 sm:p-8 rounded-[2rem] w-full max-w-md mx-4 sm:mx-0 shadow-2xl flex flex-col gap-6">
             <div className="text-center">
               <div className="mx-auto w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-4 border border-indigo-500/30">
                 <Users className="text-indigo-400 w-6 h-6" />
@@ -637,7 +667,7 @@ export default function Translator() {
           </motion.div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden px-4 pb-4 gap-4 relative z-10">
+        <div className="flex-1 flex overflow-hidden px-2 sm:px-4 pb-2 sm:pb-4 gap-4 relative z-10">
           
           {/* MAIN VIDEO AREA */}
           <div className="flex-1 relative rounded-[2rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex items-center justify-center">
@@ -708,8 +738,8 @@ export default function Translator() {
             {/* PiP Local Video (Call mode) */}
             {mode === 'call' && (
               <motion.div 
-                drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
-                className="absolute top-6 right-6 w-56 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl cursor-move z-20"
+                drag dragConstraints={{ left: -400, right: 0, top: 0, bottom: 400 }}
+                className="absolute top-3 sm:top-6 right-3 sm:right-6 w-20 sm:w-36 md:w-56 aspect-[3/4] bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden border border-white/20 sm:border-2 shadow-2xl cursor-move z-20"
               >
                 <video ref={(el) => {
                   videoRef.current = el;
@@ -731,7 +761,7 @@ export default function Translator() {
               {(sentence.length > 0 || translatedText) && isAslActive && (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                  className="absolute bottom-28 max-w-4xl w-[90%] bg-black/50 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden z-20"
+                  className="absolute bottom-16 sm:bottom-28 left-2 right-2 sm:left-auto sm:right-auto max-w-4xl sm:w-[90%] bg-black/50 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl overflow-hidden z-20"
                 >
                   {/* Shimmer effect */}
                   <motion.div animate={{ backgroundPosition: ['200% 0', '-200% 0'] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }} className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.3), transparent)', backgroundSize: '200% 100%' }} />
@@ -751,7 +781,7 @@ export default function Translator() {
                       </span>
                     </div>
                     
-                    <p className="text-3xl md:text-4xl font-medium leading-tight tracking-tight text-white drop-shadow-lg font-serif">
+                    <p className="text-lg sm:text-3xl md:text-4xl font-medium leading-tight tracking-tight text-white drop-shadow-lg font-serif">
                       "{getDisplayText() || getText()}"
                     </p>
 
@@ -771,62 +801,63 @@ export default function Translator() {
             </AnimatePresence>
 
             {/* Floating Control Bar */}
-            <div className="absolute bottom-6 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl z-30">
+            <div className="absolute bottom-3 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-auto bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-full px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-center gap-1.5 sm:gap-4 shadow-2xl z-30">
 
               {/* ── CALL-ONLY controls ── */}
               {mode === 'call' && (
                 <>
                   <button
                     onClick={handleMicToggle}
-                    className={`p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
+                    className={`p-2 sm:p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
                     title={isMuted ? 'Unmute mic' : 'Mute mic'}
                   >
-                    {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    {isMuted ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                   <button
                     onClick={handleScreenShare}
-                    className={`p-3 rounded-full transition-colors ${isScreenSharing ? 'bg-blue-500/30 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-white/10 hover:bg-white/20'}`}
+                    className={`hidden sm:flex p-2 sm:p-3 rounded-full transition-colors ${isScreenSharing ? 'bg-blue-500/30 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-white/10 hover:bg-white/20'}`}
                     title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
                   >
-                    {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+                    {isScreenSharing ? <MonitorOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
-                  <div className="w-px h-8 bg-white/10" />
+                  <div className="w-px h-6 sm:h-8 bg-white/10" />
                 </>
               )}
 
               {/* ── SHARED controls (both solo & call) ── */}
               <button
                 onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}
-                className={`p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`p-2 sm:p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
                 title="Toggle camera"
               >
-                {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                {isVideoOn ? <Video className="w-4 h-4 sm:w-5 sm:h-5" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
               <button
                 onClick={() => setIsAslActive(!isAslActive)}
-                className={`p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`p-2 sm:p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`}
                 title="Toggle AI detection"
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className={`p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`p-2 sm:p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`}
                 title={mode === 'call' ? 'Chat' : 'Transcript'}
               >
-                <MessageSquare className="w-5 h-5" />
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               {/* ── CALL-ONLY: End call ── */}
               {mode === 'call' && (
                 <>
-                  <div className="w-px h-8 bg-white/10" />
+                  <div className="w-px h-6 sm:h-8 bg-white/10" />
                   <button
                     onClick={handleLeaveRoom}
-                    className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+                    className="px-3 sm:px-6 py-1.5 sm:py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-1.5 sm:gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)] text-xs sm:text-sm"
                     title="Leave call"
                   >
-                    <PhoneOff className="w-4 h-4" /> Leave
+                    <PhoneOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Leave</span>
                   </button>
                 </>
               )}
@@ -847,11 +878,34 @@ export default function Translator() {
           <AnimatePresence>
             {isSidebarOpen && (
               <motion.div 
-                initial={{ width: 0, opacity: 0 }} animate={{ width: 380, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
-                className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col overflow-hidden shrink-0 z-20"
+                initial={isMobile ? { y: '100%', opacity: 0 } : { width: 0, opacity: 0 }}
+                animate={isMobile ? { y: 0, opacity: 1 } : { width: 360, opacity: 1 }}
+                exit={isMobile ? { y: '100%', opacity: 0 } : { width: 0, opacity: 0 }}
+                className={isMobile
+                  ? "absolute inset-x-0 bottom-0 h-[62vh] z-40 bg-gray-950/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl flex flex-col overflow-hidden"
+                  : "bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col overflow-hidden shrink-0 z-20"
+                }
               >
+                {/* Mobile: drag handle + close button */}
+                {isMobile && (
+                  <div className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
+                    <div className="flex-1" />
+                    <div className="w-10 h-1 bg-white/20 rounded-full" />
+                    <div className="flex-1 flex justify-end">
+                      <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        aria-label="Close panel"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* Tabs */}
-                <div className="flex p-2 bg-black/20">
+                <div className="flex p-2 bg-black/20 shrink-0">
                   <button onClick={() => setSidebarTab('transcript')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${sidebarTab === 'transcript' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>Transcript</button>
                   {mode === 'call' && (
                     <button onClick={() => setSidebarTab('chat')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${sidebarTab === 'chat' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>
