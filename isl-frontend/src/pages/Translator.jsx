@@ -268,8 +268,7 @@ function IncomingSuggestionBanner({ text, onDismiss }) {
 export default function Translator() {
   const {
     videoRef, canvasRef, isActive, isDetecting, error,
-    fps, prediction, backendReady, start, stop, startDetection, stopDetection, getStream,
-    setDetectionFps,
+    fps, prediction, backendReady, start, stop, stopDetection,
   } = useWebcam();
 
   const {
@@ -524,19 +523,15 @@ export default function Translator() {
     } catch (err) {
       if (err.name !== 'NotAllowedError') console.warn('Screen share error:', err);
     }
-  }, [isScreenSharing, getStream, getPeerConnection]);
+  }, [isScreenSharing, getPeerConnection]);
 
   useEffect(() => {
     if (mode !== 'call' || !inRoom || !isActive) return;
     // Start detection whenever camera is active in a room, regardless of connection status
     // so predictions are ready the moment the peer connects
-    if (!isDetecting) startDetection();
-  }, [mode, inRoom, isActive, isDetecting, startDetection]);
+    if (!isDetecting) start();
+  }, [mode, inRoom, isActive, isDetecting, start]);
 
-  useEffect(() => {
-    // Use 4 fps in call mode — enough for smooth sign detection without spiking encode CPU
-    setDetectionFps(mode === 'call' ? 4 : 4);
-  }, [mode, setDetectionFps]);
 
   useEffect(() => stop, [stop]);
 
