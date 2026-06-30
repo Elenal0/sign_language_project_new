@@ -61,10 +61,14 @@ export function useWebcam() {
   const sendFrame = useCallback(async (base64) => {
     try {
       const res = await fetch(`${API_URL}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64 }),
-      })
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+  },
+  body: JSON.stringify({
+    image: base64,
+  }),
+});
       if (!res.ok) return
       const data = await res.json()
       setPrediction(data)
