@@ -1,25 +1,37 @@
 /**
  * useVideoCall.js — WebRTC + WebSocket hook for 2-user ISL video call.
+ *
+ * Fix log:
+ *  v3 — Non-trickle ICE: wait for all candidates before sending offer/answer
+ *       so the SDP is self-contained and doesn't rely on separate ice messages
+ *       arriving in the right order.
+ *       More STUN servers + wider TURN coverage (UDP 80, TCP 443, TLS 443).
+ *       Auto ICE-restart on failure so users don't have to leave & rejoin.
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
 
+// ── WebSocket base URL ────────────────────────────────────────────────────────
+// In production on Vercel, window.location.host is the Vercel domain which
+// has NO WebSocket support. We must point directly to the Render backend.
+// In dev, window.location.host works because Vite proxies /ws → localhost:8000.
 const getWsBase = () => {
-  // In production (Vercel), WebSockets must go directly to the Render backend.
-  // Vercel is a static host and cannot relay WebSocket connections.
-  // In dev, window.location.host works because Vite proxies /ws → localhost:8000.
   const apiUrl = import.meta.env.VITE_API_URL;
   if (apiUrl) {
-    return apiUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:").replace(/\/$/, "");
+    return apiUrl
+      .replace(/^https:/, "wss:")
+      .replace(/^http:/, "ws:")
+      .replace(/\/$/, "");
   }
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}`;
 };
 
+// ── TURN credentials from env (optional override) ────────────────────────────
 const getConfiguredTurnServers = () => {
   const urls = (import.meta.env.VITE_TURN_URLS || "")
     .split(",")
-    .map((url) => url.trim())
+    .map((u) => u.trim())
     .filter(Boolean);
   if (!urls.length) return [];
   const username   = import.meta.env.VITE_TURN_USERNAME   || "";
@@ -27,13 +39,44 @@ const getConfiguredTurnServers = () => {
   return [{ urls: urls.length === 1 ? urls[0] : urls, ...(username && credential ? { username, credential } : {}) }];
 };
 
+// ── ICE server list ───────────────────────────────────────────────────────────
+// 5 Google STUN servers for maximum NAT coverage, plus Metered.ca free TURN
+// on every available transport (UDP 80, UDP 443, TCP 443, TLS 443).
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun.l.google.com:19302"  },
   { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun3.l.google.com:19302" },
+  { urls: "stun:stun4.l.google.com:19302" },
   ...getConfiguredTurnServers(),
-  { urls: "turn:openrelay.metered.ca:80",             username: "openrelayproject", credential: "openrelayproject" },
-  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
+  {
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:80?transport=tcp",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp",
+      "turns:openrelay.metered.ca:443",
+    ],
+    username:   "openrelayproject",
+    credential: "openrelayproject",
+  },
 ];
+
+// ── Helper: wait for ICE gathering to finish (non-trickle ICE) ───────────────
+// Waits until pc.iceGatheringState === "complete" or the timeout fires.
+// This ensures the SDP offer/answer contains ALL candidates (STUN + TURN)
+// before it is sent, so the remote side doesn't need separate ice messages.
+const waitForIceGathering = (pc, timeoutMs = 8000) =>
+  new Promise((resolve) => {
+    if (pc.iceGatheringState === "complete") return resolve();
+    const done = () => { pc.onicegatheringchange = null; resolve(); };
+    pc.onicegatheringchange = () => {
+      if (pc.iceGatheringState === "complete") done();
+    };
+    setTimeout(done, timeoutMs); // hard timeout — never block indefinitely
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function useVideoCall() {
   const localVideoRef        = useRef(null);
@@ -44,6 +87,7 @@ export function useVideoCall() {
   const mySlotRef            = useRef(null);
   const remoteStreamRef      = useRef(null);
   const pendingCandidatesRef = useRef([]);
+  const iceRestartTimerRef   = useRef(null);
 
   const [status,         setStatus]         = useState("idle");
   const [mySlot,         setMySlot]         = useState(null);
@@ -54,6 +98,7 @@ export function useVideoCall() {
   const [peerChat,       setPeerChat]       = useState(null);
 
   const cleanup = useCallback(() => {
+    if (iceRestartTimerRef.current) { clearTimeout(iceRestartTimerRef.current); iceRestartTimerRef.current = null; }
     if (pcRef.current)       { pcRef.current.close();       pcRef.current       = null; }
     if (signalWsRef.current) { signalWsRef.current.close(); signalWsRef.current = null; }
     if (chatWsRef.current)   { chatWsRef.current.close();   chatWsRef.current   = null; }
@@ -70,11 +115,19 @@ export function useVideoCall() {
   }, []);
 
   const buildPeerConnection = useCallback((onIceCandidate) => {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 });
+    const pc = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceCandidatePoolSize: 10,
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require",
+    });
+
     const remoteStream = new MediaStream();
     remoteStreamRef.current = remoteStream;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
 
+    // Keep trickle ICE signaling as a supplement — late candidates can still
+    // improve connectivity even though we wait for gathering before send.
     pc.onicecandidate = (e) => { if (e.candidate) onIceCandidate(e.candidate); };
 
     pc.ontrack = (e) => {
@@ -89,8 +142,18 @@ export function useVideoCall() {
 
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
-      if (s === "connected")                        setStatus("connected");
-      if (s === "disconnected" || s === "failed") {
+      if (s === "connected") {
+        setStatus("connected");
+        if (iceRestartTimerRef.current) { clearTimeout(iceRestartTimerRef.current); iceRestartTimerRef.current = null; }
+      }
+      if (s === "failed") {
+        // Auto ICE restart — renegotiate without requiring the user to rejoin
+        console.warn("[WebRTC] Connection failed — attempting ICE restart");
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        setStatus("connecting");
+        try { pc.restartIce(); } catch {}
+      }
+      if (s === "disconnected") {
         setStatus("waiting");
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       }
@@ -98,8 +161,13 @@ export function useVideoCall() {
 
     pc.oniceconnectionstatechange = () => {
       const s = pc.iceConnectionState;
-      if (s === "connected" || s === "completed")   setStatus("connected");
-      if (s === "disconnected" || s === "failed") {
+      if (s === "connected" || s === "completed") setStatus("connected");
+      if (s === "failed") {
+        setStatus("connecting");
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        try { pc.restartIce(); } catch {}
+      }
+      if (s === "disconnected") {
         setStatus("waiting");
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       }
@@ -123,7 +191,6 @@ export function useVideoCall() {
     tracks.forEach((track) => {
       if (!pc.getSenders().some((s) => s.track === track)) pc.addTrack(track, mediaStream);
     });
-    // Removed bitrate/framerate limitations to fix lag and low FPS
     return true;
   }, []);
 
@@ -131,7 +198,7 @@ export function useVideoCall() {
     cleanup();
     setStatus("connecting");
 
-    const wsBase  = getWsBase();
+    const wsBase   = getWsBase();
     const signalWs = new WebSocket(`${wsBase}/ws/signal/${roomId}`);
     const chatWs   = new WebSocket(`${wsBase}/ws/chat/${roomId}`);
     signalWsRef.current = signalWs;
@@ -148,12 +215,10 @@ export function useVideoCall() {
         if (msg.type === "name") {
           setPeerName(msg.name);
           if (!msg.isReply) {
-             chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User", isReply: true }));
+            chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User", isReply: true }));
           }
         }
-        if (msg.type === "chat") {
-          setPeerChat({ text: msg.text, id: Date.now() });
-        }
+        if (msg.type === "chat")        setPeerChat({ text: msg.text, id: Date.now() });
         if (msg.type === "translation") {
           if (msg.sentence !== undefined) setPeerSentence(msg.sentence);
           if (msg.word     !== undefined) setPeerWord(msg.word);
@@ -170,53 +235,76 @@ export function useVideoCall() {
       try { msg = JSON.parse(e.data); } catch { return; }
 
       switch (msg.type) {
+
         case "joined": {
           mySlotRef.current = msg.slot;
           setMySlot(msg.slot);
           setStatus(msg.slot === "user1" ? "waiting" : "connecting");
-          const pc = buildPeerConnection((c) => signalWs.send(JSON.stringify({ type: "ice", candidate: c })));
+
+          const pc = buildPeerConnection((c) =>
+            signalWs.readyState === WebSocket.OPEN &&
+            signalWs.send(JSON.stringify({ type: "ice", candidate: c }))
+          );
           pcRef.current = pc;
           addLocalTracks(pc, localStream);
+
           if (msg.slot === "user2") {
+            // Non-trickle ICE: gather ALL candidates before sending the offer.
+            // This makes the SDP self-contained — no separate ice messages needed.
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            signalWs.send(JSON.stringify({ type: "offer", sdp: offer }));
+            await waitForIceGathering(pc);
+            signalWs.send(JSON.stringify({ type: "offer", sdp: pc.localDescription }));
           }
           break;
         }
+
         case "offer": {
           const pc = pcRef.current; if (!pc) return;
           await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-          for (const c of pendingCandidatesRef.current) { try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {} }
+          // Flush any ICE candidates that arrived before the offer
+          for (const c of pendingCandidatesRef.current) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+          }
           pendingCandidatesRef.current = [];
+          // Non-trickle ICE: gather ALL candidates before sending answer
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          signalWs.send(JSON.stringify({ type: "answer", sdp: answer }));
+          await waitForIceGathering(pc);
+          signalWs.send(JSON.stringify({ type: "answer", sdp: pc.localDescription }));
           break;
         }
+
         case "answer": {
           const pc = pcRef.current; if (!pc) return;
           await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-          for (const c of pendingCandidatesRef.current) { try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {} }
+          for (const c of pendingCandidatesRef.current) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+          }
           pendingCandidatesRef.current = [];
           break;
         }
+
         case "ice": {
+          // Late trickle candidates — add them as a bonus even in non-trickle mode
           const pc = pcRef.current; if (!pc || !msg.candidate) return;
           if (!pc.remoteDescription) { pendingCandidatesRef.current.push(msg.candidate); return; }
           try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
           break;
         }
+
         case "peer_left": {
           setStatus("waiting");
           if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
           setPeerSentence(""); setPeerWord(""); setPeerSuggestion(""); setPeerName("");
           break;
         }
+
         case "full": {
           setStatus("full"); cleanup();
           break;
         }
+
         default: break;
       }
     };
@@ -227,7 +315,6 @@ export function useVideoCall() {
 
   const leaveRoom = useCallback(() => { cleanup(); setStatus("idle"); }, [cleanup]);
 
-  // Expose PC reference so Translator can replaceTrack for screen share
   const getPeerConnection = useCallback(() => pcRef.current, []);
 
   const sendTranslation = useCallback((word, sentence) => {
