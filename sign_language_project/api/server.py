@@ -60,6 +60,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── WebSocket signaling routes (/ws/signal, /ws/chat) ─────────────────────────
+from api.signaling import router as signaling_router  # noqa: E402
+app.include_router(signaling_router)
+
 # ── Model loading (singleton at startup) ──────────────────────────────────────
 model = None
 label_encoder = None
