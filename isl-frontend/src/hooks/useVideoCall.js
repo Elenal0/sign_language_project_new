@@ -5,6 +5,13 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 
 const getWsBase = () => {
+  // In production (Vercel), WebSockets must go directly to the Render backend.
+  // Vercel is a static host and cannot relay WebSocket connections.
+  // In dev, window.location.host works because Vite proxies /ws → localhost:8000.
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    return apiUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:").replace(/\/$/, "");
+  }
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}`;
 };

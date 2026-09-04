@@ -41,6 +41,7 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174,"
     "http://localhost:5175,http://127.0.0.1:5175,"
+    "https://drishya-vaani.vercel.app,"
     "https://sign-language-backend-4uar.onrender.com"
 ).split(",")
 API_KEY_SECRET = os.getenv("API_KEY_SECRET", "dev-secret-key")
