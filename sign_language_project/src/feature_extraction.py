@@ -2,11 +2,37 @@ from __future__ import annotations
 import cv2
 import numpy as np
 import mediapipe as mp
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
+from mediapipe.tasks.python.vision import RunningMode
+import urllib.request
+import os
+from pathlib import Path
+
+# ── MediaPipe Hand Landmarker model download ──────────────────────────────────
+_MODEL_FILENAME = "hand_landmarker.task"
+_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
+    "hand_landmarker/float16/latest/hand_landmarker.task"
+)
+_MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / _MODEL_FILENAME
+
+
+def _ensure_model() -> str:
+    """Download the MediaPipe hand landmarker task file if not already present."""
+    _MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _MODEL_PATH.exists():
+        print(f"[HandLandmarkExtractor] Downloading MediaPipe model -> {_MODEL_PATH}")
+        urllib.request.urlretrieve(_MODEL_URL, str(_MODEL_PATH))
+        print("[HandLandmarkExtractor] Download complete.")
+    return str(_MODEL_PATH)
 
 
 class HandLandmarkExtractor:
     """
-    Extract hand landmarks using Google MediaPipe Hands.
+    Extract hand landmarks using Google MediaPipe HandLandmarker (Tasks API).
+
+    Compatible with mediapipe >= 0.10.21 which removed mp.solutions.hands.
 
     Parameters
     ----------
@@ -17,7 +43,7 @@ class HandLandmarkExtractor:
     min_tracking_confidence : float
         Minimum confidence for tracking (ignored when static_image_mode=True).
     static_image_mode : bool
-        Set True when processing individual images (dataset building).
+        Set True when processing individual images (dataset building / API).
         Set False for video streams / real-time webcam.
     """
 
@@ -28,21 +54,29 @@ class HandLandmarkExtractor:
         min_tracking_confidence: float = 0.5,
         static_image_mode: bool = False,
     ) -> None:
-        # Verify MediaPipe installed correctly (HPC / headless environments)
-        if not hasattr(mp, 'solutions'):
-            raise RuntimeError(
-                "MediaPipe solutions module is missing.\n"
-                "Fix: pip uninstall opencv-python mediapipe && "
-                "pip install opencv-python-headless mediapipe"
-            )
-        self.mp_hands = mp.solutions.hands
-        self.mp_draw  = mp.solutions.drawing_utils
-        self.hands    = self.mp_hands.Hands(
-            static_image_mode=static_image_mode,
-            max_num_hands=max_hands,
-            min_detection_confidence=min_detection_confidence,
+        model_path = _ensure_model()
+
+        running_mode = RunningMode.IMAGE if static_image_mode else RunningMode.IMAGE
+
+        base_options = mp_python.BaseOptions(model_asset_path=model_path)
+        options = mp_vision.HandLandmarkerOptions(
+            base_options=base_options,
+            running_mode=running_mode,
+            num_hands=max_hands,
+            min_hand_detection_confidence=min_detection_confidence,
+            min_hand_presence_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence,
         )
+        self._detector = mp_vision.HandLandmarker.create_from_options(options)
+        self._max_hands = max_hands
+
+    # ── Internal helper ───────────────────────────────────────────────────────
+
+    def _detect(self, frame: np.ndarray):
+        """Run the MediaPipe detector on a BGR numpy frame. Returns detection result."""
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+        return self._detector.detect(mp_image)
 
     # ── Core extraction ───────────────────────────────────────────────────────
 
@@ -58,26 +92,22 @@ class HandLandmarkExtractor:
             Flattened x, y, z for up to 2 hands (21 lm × 3 coords × 2 hands).
             Zero-padded if fewer than 2 hands are detected.
         frame : np.ndarray
-            Input frame with landmark skeleton drawn on it.
+            Input frame (unchanged — drawing removed for headless server).
         hand_detected : bool
             True if at least one hand was found.
         """
-        frame_rgb     = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results       = self.hands.process(frame_rgb)
-        landmarks     = np.zeros(126, dtype=np.float32)
+        result = self._detect(frame)
+        landmarks = np.zeros(126, dtype=np.float32)
         hand_detected = False
 
-        if results.multi_hand_landmarks:
+        if result.hand_landmarks:
             hand_detected = True
-            for hand_idx, hand_lms in enumerate(results.multi_hand_landmarks[:2]):
+            for hand_idx, hand_lms in enumerate(result.hand_landmarks[:2]):
                 offset = hand_idx * 63  # 21 lm × 3 coords per hand
-                for lm_idx, lm in enumerate(hand_lms.landmark):
+                for lm_idx, lm in enumerate(hand_lms):
                     landmarks[offset + lm_idx * 3]     = lm.x
                     landmarks[offset + lm_idx * 3 + 1] = lm.y
                     landmarks[offset + lm_idx * 3 + 2] = lm.z
-                self.mp_draw.draw_landmarks(
-                    frame, hand_lms, self.mp_hands.HAND_CONNECTIONS
-                )
 
         return landmarks, frame, hand_detected
 
@@ -140,14 +170,12 @@ class HandLandmarkExtractor:
     def count_extended_fingers(self, frame: np.ndarray) -> int:
         """
         Count extended fingers (0–5) from the first detected hand.
-        Used in real-time mode so the user can select NLP sentence options
-        by holding up 1 / 2 / 3 fingers.
+        Used in real-time mode for NLP sentence selection.
         """
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results   = self.hands.process(frame_rgb)
-        if not results.multi_hand_landmarks:
+        result = self._detect(frame)
+        if not result.hand_landmarks:
             return 0
-        lm          = results.multi_hand_landmarks[0].landmark
+        lm = result.hand_landmarks[0]
         fingertips  = [8, 12, 16, 20]
         finger_pips = [6, 10, 14, 18]
         count = sum(
@@ -162,5 +190,5 @@ class HandLandmarkExtractor:
     # ── Cleanup ───────────────────────────────────────────────────────────────
 
     def __del__(self) -> None:
-        if hasattr(self, 'hands'):
-            self.hands.close()
+        if hasattr(self, '_detector'):
+            self._detector.close()

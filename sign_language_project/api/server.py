@@ -36,7 +36,13 @@ app = FastAPI(
     version="2.0.0",
 )
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:5174,http://127.0.0.1:5174,"
+    "http://localhost:5175,http://127.0.0.1:5175,"
+    "https://sign-language-backend-4uar.onrender.com"
+).split(",")
 API_KEY_SECRET = os.getenv("API_KEY_SECRET", "dev-secret-key")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
