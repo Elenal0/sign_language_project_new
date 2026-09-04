@@ -4,7 +4,8 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 
 // Empty string = relative URL — Vite proxy routes it to localhost:8000
 // Works on both PC (localhost:5173) and Android (192.168.x.x:5173)
-const API_URL = ''
+const API_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const DEFAULT_FPS   = 4
 const CALL_FPS      = 2   // halved during active WebRTC call to free CPU for video encoding
 const DEFAULT_JPEG  = 0.7
@@ -60,10 +61,14 @@ export function useWebcam() {
   const sendFrame = useCallback(async (base64) => {
     try {
       const res = await fetch(`${API_URL}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64 }),
-      })
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+  },
+  body: JSON.stringify({
+    image: base64,
+  }),
+});
       if (!res.ok) return
       const data = await res.json()
       setPrediction(data)
@@ -77,8 +82,14 @@ export function useWebcam() {
     if (!isDetectingRef.current) return
 
     const t0 = performance.now()
-    const frame = captureFrame()
-    if (frame) await sendFrame(frame)
+const frame = captureFrame();
+
+console.log("Frame length:", frame?.length);
+console.log("Frame start:", frame?.substring(0, 50));
+
+if (frame) {
+    await sendFrame(frame);
+}
     const elapsed = performance.now() - t0
 
     // Compute display FPS based on actual interval
