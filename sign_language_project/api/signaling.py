@@ -1,19 +1,20 @@
 """
 signaling.py
-WebSocket-based signaling server for 2-user ISL video call.
+WebSocket-based signaling server for N-user ISL video call (mesh topology).
 
 Endpoints:
-  /ws/signal/{room_id}  — WebRTC SDP + ICE relay (max 2 users per room)
-  /ws/chat/{room_id}    — Translation text relay (broadcast to room)
+  /ws/signal/{room_id}  — WebRTC SDP + ICE relay (max 6 users per room)
+  /ws/chat/{room_id}    — Translation/chat relay (broadcast to room)
 
-Each room holds at most 2 connections. The first joiner is 'user1',
-the second is 'user2'. When either leaves, the remaining user is notified.
+Each peer gets a UUID (peer_id). Signaling messages are routed between
+specific peers using from_id / to_id fields.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import uuid
 from collections import defaultdict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -22,11 +23,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── In-memory room state ──────────────────────────────────────────────────────
-# signal_rooms: room_id -> {"user1": WebSocket | None, "user2": WebSocket | None}
-signal_rooms: dict[str, dict[str, WebSocket | None]] = defaultdict(
-    lambda: {"user1": None, "user2": None}
-)
+MAX_PEERS = 6  # max participants per room
+
+# signal_rooms: room_id -> {peer_id: WebSocket}
+signal_rooms: dict[str, dict[str, WebSocket]] = defaultdict(dict)
 
 # chat_rooms: room_id -> set of WebSockets
 chat_rooms: dict[str, set[WebSocket]] = defaultdict(set)
@@ -42,10 +42,6 @@ async def _send(ws: WebSocket, payload: dict) -> None:
         pass
 
 
-def _other_slot(slot: str) -> str:
-    return "user2" if slot == "user1" else "user1"
-
-
 # ── Signaling endpoint ────────────────────────────────────────────────────────
 
 @router.websocket("/ws/signal/{room_id}")
@@ -53,22 +49,30 @@ async def signal_endpoint(websocket: WebSocket, room_id: str) -> None:
     await websocket.accept()
     room = signal_rooms[room_id]
 
-    # Assign slot
-    if room["user1"] is None:
-        slot = "user1"
-    elif room["user2"] is None:
-        slot = "user2"
-    else:
-        # Room is full
+    # Reject if room is full
+    if len(room) >= MAX_PEERS:
         await _send(websocket, {"type": "full"})
         await websocket.close()
         return
 
-    room[slot] = websocket
-    await _send(websocket, {"type": "joined", "slot": slot})
-    logger.info(f"Room {room_id}: {slot} joined")
+    # Assign a unique peer ID
+    peer_id = str(uuid.uuid4())
+    existing_peers = list(room.keys())
+    room[peer_id] = websocket
 
-    other = _other_slot(slot)
+    # Tell the new joiner their ID + everyone already in the room
+    await _send(websocket, {
+        "type": "joined",
+        "peer_id": peer_id,
+        "existing_peers": existing_peers,
+    })
+
+    # Tell all existing peers about the new arrival
+    for eid, ews in list(room.items()):
+        if eid != peer_id:
+            await _send(ews, {"type": "peer_joined", "peer_id": peer_id})
+
+    logger.info(f"Room {room_id}: {peer_id[:8]} joined ({len(room)} total)")
 
     try:
         async for raw in websocket.iter_text():
@@ -77,31 +81,29 @@ async def signal_endpoint(websocket: WebSocket, room_id: str) -> None:
             except json.JSONDecodeError:
                 continue
 
-            # Forward offer / answer / ICE to the other peer
-            if msg.get("type") in ("offer", "answer", "ice"):
-                peer_ws = room[other]
-                if peer_ws is not None:
-                    await _send(peer_ws, msg)
+            msg_type = msg.get("type")
+            to_id    = msg.get("to_id")
+
+            # Route offer / answer / ice to the specific target peer
+            if msg_type in ("offer", "answer", "ice") and to_id:
+                target_ws = room.get(to_id)
+                if target_ws is not None:
+                    msg["from_id"] = peer_id   # stamp sender
+                    await _send(target_ws, msg)
 
     except WebSocketDisconnect:
         pass
     finally:
-        current_room = signal_rooms.get(room_id)
-        if current_room is room and current_room.get(slot) is websocket:
-            current_room[slot] = None
-        logger.info(f"Room {room_id}: {slot} left")
+        current_room = signal_rooms.get(room_id, {})
+        current_room.pop(peer_id, None)
+        logger.info(f"Room {room_id}: {peer_id[:8]} left ({len(current_room)} remaining)")
 
-        # Notify the remaining peer
-        peer_ws = current_room.get(other) if current_room is room else None
-        if peer_ws is not None:
-            await _send(peer_ws, {"type": "peer_left"})
+        # Notify remaining peers
+        for ews in list(current_room.values()):
+            await _send(ews, {"type": "peer_left", "peer_id": peer_id})
 
         # Clean up empty room
-        if (
-            current_room is room
-            and current_room["user1"] is None
-            and current_room["user2"] is None
-        ):
+        if not current_room:
             signal_rooms.pop(room_id, None)
 
 
@@ -111,11 +113,11 @@ async def signal_endpoint(websocket: WebSocket, room_id: str) -> None:
 async def chat_endpoint(websocket: WebSocket, room_id: str) -> None:
     await websocket.accept()
     chat_rooms[room_id].add(websocket)
-    logger.info(f"Chat room {room_id}: connection added ({len(chat_rooms[room_id])} total)")
+    logger.info(f"Chat room {room_id}: joined ({len(chat_rooms[room_id])} total)")
 
     try:
         async for raw in websocket.iter_text():
-            # Broadcast to all other members in the room
+            # Broadcast to all other members
             dead: set[WebSocket] = set()
             for peer in list(chat_rooms[room_id]):
                 if peer is websocket:

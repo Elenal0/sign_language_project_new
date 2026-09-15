@@ -16,9 +16,10 @@ import {
   Phone, PhoneOff, Users, User, Link2, Loader2, UserCheck,
   Sparkles, Zap, MessageSquare, CheckCircle2, Send, Settings, Monitor, MonitorOff, Mic, MicOff, Maximize2, Minimize2,
 } from 'lucide-react';
-import { useWebcam }    from '../hooks/useWebcam';
-import { useVideoCall } from '../hooks/useVideoCall';
-import { useApp }       from '../context/AppContext';
+import { useWebcam }           from '../hooks/useWebcam';
+import { useVideoCall }         from '../hooks/useVideoCall';
+import { useApp }               from '../context/AppContext';
+import MeetingReadyModal        from '../components/MeetingReadyModal';
 
 const MIN_CONFIDENCE = 0.60;
 
@@ -264,6 +265,126 @@ function IncomingSuggestionBanner({ text, onDismiss }) {
   );
 }
 
+/* ─── VideoTile ─────────────────────────────────────────────────────────────── */
+function VideoTile({ stream, name, isPinned, onPin }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current && stream) {
+      ref.current.srcObject = stream;
+      ref.current.play?.().catch(() => {});
+    }
+  }, [stream]);
+
+  return (
+    <div
+      onClick={onPin}
+      className={`relative w-full h-full min-h-0 rounded-2xl overflow-hidden bg-gray-900/80 cursor-pointer border-2 transition-all duration-200 ${
+        isPinned
+          ? 'border-indigo-500 shadow-[0_0_24px_rgba(99,102,241,0.5)]'
+          : 'border-white/10 hover:border-white/30'
+      }`}
+      title={isPinned ? 'Click to unpin' : 'Click to pin fullscreen'}
+    >
+      <video
+        ref={ref}
+        autoPlay
+        playsInline
+        muted={false}
+        className="w-full h-full object-cover"
+      />
+      {/* Placeholder avatar when stream not yet flowing */}
+      {!stream && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-500">
+          <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-300">
+            {name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <span className="text-xs">Connecting…</span>
+        </div>
+      )}
+      {/* Name label */}
+      <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium pointer-events-none">
+        {name || 'Partner'}
+      </div>
+      {isPinned && (
+        <div className="absolute top-3 right-3 bg-indigo-500/80 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-semibold pointer-events-none">
+          Pinned
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── VideoGrid ─────────────────────────────────────────────────────────────── */
+// Auto-adjusting grid for remote peers (local video is always a separate PiP).
+// When a peer is pinned: featured (big) + strip (others on right).
+// When nothing pinned: equal-size CSS grid.
+function VideoGrid({ remotePeers, pinnedPeerId, onPinToggle }) {
+  const peerList = [...remotePeers.entries()]; // [[id, {stream,name}], ...]
+
+  if (peerList.length === 0) return null;
+
+  // ── Featured + strip layout when a tile is pinned ──────────────────────────
+  if (pinnedPeerId && remotePeers.has(pinnedPeerId)) {
+    const pinned = remotePeers.get(pinnedPeerId);
+    const others = peerList.filter(([id]) => id !== pinnedPeerId);
+    return (
+      <div className="absolute inset-0 flex gap-3">
+        {/* Pinned tile — takes the bulk of the space */}
+        <div className="flex-1 min-w-0">
+          <VideoTile
+            stream={pinned.stream}
+            name={pinned.name || 'Partner'}
+            isPinned
+            onPin={() => onPinToggle(null)}
+          />
+        </div>
+        {/* Side strip — other remote peers */}
+        {others.length > 0 && (
+          <div className="flex flex-col gap-3 w-48 shrink-0">
+            {others.map(([id, peer]) => (
+              <div key={id} className="flex-1 min-h-0">
+                <VideoTile
+                  stream={peer.stream}
+                  name={peer.name || 'Partner'}
+                  isPinned={false}
+                  onPin={() => onPinToggle(id)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Equal grid — no pin ────────────────────────────────────────────────────
+  // Column count: 1 → 1 col, 2 → 2 cols, 3-4 → 2 cols, 5 → 3 cols
+  const count = peerList.length;
+  const cols  = count <= 1 ? 1 : count <= 4 ? 2 : 3;
+
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gap: '12px',
+      }}
+    >
+      {peerList.map(([id, peer]) => (
+        <VideoTile
+          key={id}
+          stream={peer.stream}
+          name={peer.name || 'Partner'}
+          isPinned={false}
+          onPin={() => onPinToggle(id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ─── Main ──────────────────────────────────────────────────────────────────── */
 export default function Translator() {
   const {
@@ -273,10 +394,11 @@ export default function Translator() {
   } = useWebcam();
 
   const {
-    localVideoRef, status: callStatus, mySlot,
+    status: callStatus, myId,
+    remotePeers,
     peerSentence, peerWord, peerSuggestion, peerName, peerChat,
-    attachRemoteVideoRef, joinRoom, leaveRoom, sendTranslation, sendSuggestion, sendChatMessage,
-    getPeerConnection,
+    joinRoom, leaveRoom, sendTranslation, sendSuggestion, sendChatMessage,
+    replaceVideoTrack,
   } = useVideoCall();
 
   const { addToHistory, showToast, getSuggestions } = useApp();
@@ -284,6 +406,8 @@ export default function Translator() {
   const [mode, setMode]               = useState('solo');
   const [roomInput, setRoomInput]     = useState('');
   const [inRoom, setInRoom]           = useState(false);
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [pinnedPeerId, setPinnedPeerId]         = useState(null); // peerId pinned to fullscreen, null = equal grid
   const [userName, setUserName]       = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab]   = useState('transcript');
@@ -461,7 +585,24 @@ export default function Translator() {
     setInRoom(true);
   };
 
-  const handleLeaveRoom = () => { leaveRoom(); setInRoom(false); setRoomInput(''); };
+  // Show "Your meeting's ready" modal when host is alone waiting for others.
+  // Auto-dismiss once the first person joins.
+  useEffect(() => {
+    if (callStatus === 'waiting' && remotePeers.size === 0) {
+      setShowMeetingModal(true);
+    }
+    if (remotePeers.size > 0) {
+      setShowMeetingModal(false);
+    }
+  }, [callStatus, remotePeers.size]);
+
+  const handleLeaveRoom = () => {
+    leaveRoom();
+    setInRoom(false);
+    setRoomInput('');
+    setShowMeetingModal(false);
+  };
+
 
   const handleModeSwitch = (m) => {
     if (m === 'solo' && inRoom) handleLeaveRoom();
@@ -481,22 +622,15 @@ export default function Translator() {
   // ── Real screen share ─────────────────────────────────────────────────────────
   const handleScreenShare = useCallback(async () => {
     if (isScreenSharing) {
-      // Stop screen share, restore camera
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(t => t.stop());
         screenStreamRef.current = null;
       }
-      // Replace sender track back to camera
+      // Restore camera track on all peer connections
       const camStream = getStream();
       if (camStream) {
         const videoTrack = camStream.getVideoTracks()[0];
-        if (videoTrack) {
-          const pc = getPeerConnection();
-          if (pc) {
-            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-            if (sender) sender.replaceTrack(videoTrack).catch(() => {});
-          }
-        }
+        if (videoTrack) replaceVideoTrack(videoTrack);
       }
       setIsScreenSharing(false);
       return;
@@ -508,22 +642,23 @@ export default function Translator() {
       });
       screenStreamRef.current = screenStream;
       const screenTrack = screenStream.getVideoTracks()[0];
-      // Replace the sender's video track with screen
-      const pc = getPeerConnection();
-      if (pc) {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) sender.replaceTrack(screenTrack).catch(() => {});
-      }
+      // Replace video track on every peer connection at once
+      replaceVideoTrack(screenTrack);
       // Auto-stop when user clicks browser's 'Stop sharing'
       screenTrack.onended = () => {
         screenStreamRef.current = null;
         setIsScreenSharing(false);
+        const camStream = getStream();
+        if (camStream) {
+          const videoTrack = camStream.getVideoTracks()[0];
+          if (videoTrack) replaceVideoTrack(videoTrack);
+        }
       };
       setIsScreenSharing(true);
     } catch (err) {
       if (err.name !== 'NotAllowedError') console.warn('Screen share error:', err);
     }
-  }, [isScreenSharing, getStream, getPeerConnection]);
+  }, [isScreenSharing, getStream, replaceVideoTrack]);
 
   useEffect(() => {
     if (mode !== 'call' || !inRoom || !isActive) return;
@@ -551,6 +686,14 @@ export default function Translator() {
   return (
     <div className="flex flex-col h-full bg-[#050505] text-white overflow-hidden relative font-sans">
       
+      {/* Meeting Ready Modal — shown when host is waiting for partner */}
+      {showMeetingModal && (
+        <MeetingReadyModal
+          roomCode={roomInput}
+          onDismiss={() => setShowMeetingModal(false)}
+        />
+      )}
+
       {/* Subtle Glowing Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
@@ -645,16 +788,17 @@ export default function Translator() {
             {/* The Main Video Stream (Remote in Call, Local in Solo) */}
             {mode === 'call' ? (
               <>
-                <video 
-                  ref={attachRemoteVideoRef} 
-                  autoPlay 
-                  playsInline 
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${callStatus === 'connected' ? 'opacity-100' : 'opacity-0'}`} 
-                />
-                {callStatus !== 'connected' && (
+                {/* ── Multi-party grid of remote peers ── */}
+                {remotePeers.size > 0 ? (
+                  <VideoGrid
+                    remotePeers={remotePeers}
+                    pinnedPeerId={pinnedPeerId}
+                    onPinToggle={setPinnedPeerId}
+                  />
+                ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-gray-400 z-10">
                     <Loader2 className="w-8 h-8 animate-spin" />
-                    <p>{callStatus === 'waiting' ? 'Waiting for partner to join...' : 'Connecting...'}</p>
+                    <p>{callStatus === 'waiting' ? 'Waiting for others to join…' : 'Connecting…'}</p>
                   </div>
                 )}
               </>
@@ -685,39 +829,47 @@ export default function Translator() {
             {/* Dark gradient for text readability */}
             <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
 
-            {/* Top Left Name Tag (Call mode) */}
-            {mode === 'call' && callStatus === 'connected' && (
-              <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3">
+            {/* Top Left — participant count badge (Call mode) */}
+            {mode === 'call' && remotePeers.size > 0 && (
+              <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3 z-10">
                 <div className="flex items-end gap-1 h-3">
                   {[1,2,3,4,5].map(i => (
                     <motion.div key={i} animate={{ height: ['4px', '12px', '4px'] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }} className="w-1 bg-emerald-400 rounded-full" />
                   ))}
                 </div>
-                <span className="text-sm font-medium">{peerName || 'Partner'}</span>
+                <span className="text-sm font-medium">
+                  {remotePeers.size === 1 ? (peerName || 'Partner') : `${remotePeers.size + 1} participants`}
+                </span>
               </div>
             )}
 
-            {/* Top Right Tracking Badge */}
-            {(mode === 'solo' || (mode === 'call' && callStatus === 'connected')) && isAslActive && (
-              <div className={`absolute top-6 ${mode === 'call' ? 'left-40' : 'right-6'} bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2`}>
+            {/* AI Tracking Badge */}
+            {(mode === 'solo' || (mode === 'call' && remotePeers.size > 0)) && isAslActive && (
+              <div className={`absolute top-6 ${mode === 'call' ? 'left-40' : 'right-6'} bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2 z-10`}>
                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                  <span className="text-xs font-medium text-indigo-300">AI Tracking Active</span>
               </div>
             )}
 
-            {/* PiP Local Video (Call mode) */}
+            {/* Local video PiP — draggable, always in corner */}
             {mode === 'call' && (
-              <motion.div 
-                drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
-                className="absolute top-6 right-6 w-56 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl cursor-move z-20"
+              <motion.div
+                drag
+                dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
+                className="absolute top-6 right-6 w-48 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl cursor-move z-20"
+                whileHover={{ borderColor: 'rgba(255,255,255,0.4)' }}
               >
-                <video ref={(el) => {
-                  videoRef.current = el;
-                  localVideoRef.current = el;
-                  if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream();
-                }} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-                
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                <video
+                  ref={(el) => {
+                    videoRef.current = el;
+                    if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream();
+                  }}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover scale-x-[-1] pointer-events-none"
+                />
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
                   <div className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
                     {userName || 'You'}
                   </div>
@@ -729,7 +881,7 @@ export default function Translator() {
             {/* Real-time Translation Overlay */}
             <AnimatePresence>
               {(sentence.length > 0 || translatedText) && isAslActive && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
                   className="absolute bottom-28 max-w-4xl w-[90%] bg-black/50 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden z-20"
                 >
@@ -740,7 +892,7 @@ export default function Translator() {
                     <div className="flex items-center gap-2 mb-3">
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg"><MessageSquare className="w-4 h-4 text-indigo-400" /></div>
                       <span className="text-xs font-bold text-indigo-300 tracking-wider uppercase flex items-center gap-2">
-                        {mode === 'call' && callStatus === 'connected' ? `${peerName || 'PARTNER'} TRANSLATING FROM ISL` : 'TRANSLATING FROM ISL'}
+                        {mode === 'call' && remotePeers.size > 0 ? `${peerName || 'PARTNER'} TRANSLATING FROM ISL` : 'TRANSLATING FROM ISL'}
                         {isTranslating && (
                           <span className="flex gap-1">
                             <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
@@ -790,6 +942,16 @@ export default function Translator() {
                   >
                     {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
                   </button>
+                  {/* Share / Invite button — reopens the meeting link + QR modal */}
+                  {inRoom && (
+                    <button
+                      onClick={() => setShowMeetingModal(true)}
+                      className="p-3 rounded-full transition-all bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 hover:text-indigo-100 shadow-[0_0_10px_rgba(99,102,241,0.2)] hover:shadow-[0_0_16px_rgba(99,102,241,0.4)]"
+                      title="Share meeting link / QR code"
+                    >
+                      <Link2 className="w-5 h-5" />
+                    </button>
+                  )}
                   <div className="w-px h-8 bg-white/10" />
                 </>
               )}

@@ -1,20 +1,30 @@
 /**
- * useVideoCall.js — WebRTC + WebSocket hook for 2-user ISL video call.
+ * useVideoCall.js — WebRTC mesh hook for N-user ISL video call (up to 6).
+ * v4 — Full mesh topology: each user holds a direct RTCPeerConnection to
+ *       every other participant. The newer joiner always sends the offer.
  *
- * Fix log:
- *  v3 — Non-trickle ICE: wait for all candidates before sending offer/answer
- *       so the SDP is self-contained and doesn't rely on separate ice messages
- *       arriving in the right order.
- *       More STUN servers + wider TURN coverage (UDP 80, TCP 443, TLS 443).
- *       Auto ICE-restart on failure so users don't have to leave & rejoin.
+ * Exported state:
+ *   status        — 'idle' | 'connecting' | 'waiting' | 'connected' | 'full' | 'error'
+ *   myId          — this user's server-assigned UUID
+ *   remotePeers   — Map<peerId, { stream: MediaStream|null, name: string }>
+ *   peerSentence  — last ISL sentence received from any peer (for overlay)
+ *   peerWord      — last single ISL word received from any peer
+ *   peerSuggestion— last suggestion received from any peer
+ *   peerName      — display name of first / only remote peer (convenience)
+ *   peerChat      — { text, sender, id } of last chat message
+ *
+ * Exported actions:
+ *   joinRoom(roomId, localStream, userName)
+ *   leaveRoom()
+ *   sendTranslation(word, sentence)
+ *   sendSuggestion(text)
+ *   sendChatMessage(text)
+ *   replaceVideoTrack(newTrack)  — swaps video on ALL peer connections (screen share)
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
 
 // ── WebSocket base URL ────────────────────────────────────────────────────────
-// In production on Vercel, window.location.host is the Vercel domain which
-// has NO WebSocket support. We must point directly to the Render backend.
-// In dev, window.location.host works because Vite proxies /ws → localhost:8000.
 const getWsBase = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   if (apiUrl) {
@@ -39,9 +49,7 @@ const getConfiguredTurnServers = () => {
   return [{ urls: urls.length === 1 ? urls[0] : urls, ...(username && credential ? { username, credential } : {}) }];
 };
 
-// ── ICE server list ───────────────────────────────────────────────────────────
-// 5 Google STUN servers for maximum NAT coverage, plus Metered.ca free TURN
-// on every available transport (UDP 80, UDP 443, TCP 443, TLS 443).
+// ── ICE servers ───────────────────────────────────────────────────────────────
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302"  },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -62,51 +70,65 @@ const ICE_SERVERS = [
   },
 ];
 
-// ── Helper: wait for ICE gathering to finish (non-trickle ICE) ───────────────
-// Waits until pc.iceGatheringState === "complete" or the timeout fires.
-// This ensures the SDP offer/answer contains ALL candidates (STUN + TURN)
-// before it is sent, so the remote side doesn't need separate ice messages.
+// ── Wait for ICE gathering to complete (non-trickle ICE) ─────────────────────
 const waitForIceGathering = (pc, timeoutMs = 8000) =>
   new Promise((resolve) => {
     if (pc.iceGatheringState === "complete") return resolve();
     const done = () => { pc.onicegatheringchange = null; resolve(); };
-    pc.onicegatheringchange = () => {
-      if (pc.iceGatheringState === "complete") done();
-    };
-    setTimeout(done, timeoutMs); // hard timeout — never block indefinitely
+    pc.onicegatheringchange = () => { if (pc.iceGatheringState === "complete") done(); };
+    setTimeout(done, timeoutMs);
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useVideoCall() {
-  const localVideoRef        = useRef(null);
-  const remoteVideoRef       = useRef(null);
-  const pcRef                = useRef(null);
-  const signalWsRef          = useRef(null);
-  const chatWsRef            = useRef(null);
-  const mySlotRef            = useRef(null);
-  const remoteStreamRef      = useRef(null);
-  const pendingCandidatesRef = useRef([]);
-  const iceRestartTimerRef   = useRef(null);
+  // ── Refs (don't trigger re-renders) ────────────────────────────────────────
+  const localStreamRef        = useRef(null);
+  const signalWsRef           = useRef(null);
+  const chatWsRef             = useRef(null);
+  const myIdRef               = useRef(null);
+  const myNameRef             = useRef("User");
+  // Map<peerId, { pc: RTCPeerConnection, stream: MediaStream, name: string }>
+  const peersRef              = useRef(new Map());
+  // Map<peerId, RTCIceCandidate[]> — buffer candidates arriving before remoteDesc
+  const pendingCandidatesRef  = useRef(new Map());
 
-  const [status,         setStatus]         = useState("idle");
-  const [mySlot,         setMySlot]         = useState(null);
-  const [peerSentence,   setPeerSentence]   = useState("");
-  const [peerWord,       setPeerWord]       = useState("");
-  const [peerSuggestion, setPeerSuggestion] = useState("");
-  const [peerName,       setPeerName]       = useState("");
-  const [peerChat,       setPeerChat]       = useState(null);
+  // ── React state ─────────────────────────────────────────────────────────────
+  const [status,        setStatus]        = useState("idle");
+  const [myId,          setMyId]          = useState(null);
+  // Map<peerId, { stream: MediaStream|null, name: string }>
+  const [remotePeers,   setRemotePeers]   = useState(new Map());
+  const [peerSentence,  setPeerSentence]  = useState("");
+  const [peerWord,      setPeerWord]      = useState("");
+  const [peerSuggestion,setPeerSuggestion]= useState("");
+  const [peerName,      setPeerName]      = useState("");
+  const [peerChat,      setPeerChat]      = useState(null);
 
+  // ── Sync peersRef → React state ─────────────────────────────────────────────
+  const syncPeers = useCallback(() => {
+    setRemotePeers(new Map(
+      [...peersRef.current.entries()].map(([id, { stream, name }]) => [id, { stream, name }])
+    ));
+    // Keep peerName as the first peer's name for backwards-compat
+    const first = peersRef.current.values().next().value;
+    setPeerName(first?.name || "");
+  }, []);
+
+  // ── Full cleanup ─────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
-    if (iceRestartTimerRef.current) { clearTimeout(iceRestartTimerRef.current); iceRestartTimerRef.current = null; }
-    if (pcRef.current)       { pcRef.current.close();       pcRef.current       = null; }
+    for (const { pc } of peersRef.current.values()) {
+      try { pc.close(); } catch {}
+    }
+    peersRef.current.clear();
+    pendingCandidatesRef.current.clear();
+
     if (signalWsRef.current) { signalWsRef.current.close(); signalWsRef.current = null; }
     if (chatWsRef.current)   { chatWsRef.current.close();   chatWsRef.current   = null; }
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    remoteStreamRef.current      = null;
-    pendingCandidatesRef.current = [];
-    mySlotRef.current            = null;
-    setMySlot(null);
+
+    myIdRef.current = null;
+    setMyId(null);
+    setRemotePeers(new Map());
+    setStatus("idle");
     setPeerSentence("");
     setPeerWord("");
     setPeerSuggestion("");
@@ -114,7 +136,11 @@ export function useVideoCall() {
     setPeerChat(null);
   }, []);
 
-  const buildPeerConnection = useCallback((onIceCandidate) => {
+  // ── Create one RTCPeerConnection for a specific remote peer ──────────────────
+  const createPeerConnection = useCallback((peerId) => {
+    // Avoid duplicates
+    if (peersRef.current.has(peerId)) return peersRef.current.get(peerId).pc;
+
     const pc = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
       iceCandidatePoolSize: 10,
@@ -122,114 +148,103 @@ export function useVideoCall() {
       rtcpMuxPolicy: "require",
     });
 
-    const remoteStream = new MediaStream();
-    remoteStreamRef.current = remoteStream;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+    // Add local tracks to this connection
+    const stream = localStreamRef.current;
+    if (stream) stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-    // Keep trickle ICE signaling as a supplement — late candidates can still
-    // improve connectivity even though we wait for gathering before send.
-    pc.onicecandidate = (e) => { if (e.candidate) onIceCandidate(e.candidate); };
+    // Receive remote stream
+    const remoteStream = new MediaStream();
+    peersRef.current.set(peerId, { pc, stream: remoteStream, name: "" });
 
     pc.ontrack = (e) => {
-      const stream = remoteStreamRef.current || new MediaStream();
-      remoteStreamRef.current = stream;
-      if (!stream.getTracks().some((t) => t.id === e.track.id)) stream.addTrack(e.track);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.play?.().catch(() => {});
+      if (!remoteStream.getTracks().some((t) => t.id === e.track.id)) {
+        remoteStream.addTrack(e.track);
+      }
+      const entry = peersRef.current.get(peerId);
+      if (entry) {
+        peersRef.current.set(peerId, { ...entry, stream: remoteStream });
+        syncPeers();
+      }
+    };
+
+    // Trickle ICE candidates to the specific peer
+    pc.onicecandidate = (e) => {
+      if (e.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
+        signalWsRef.current.send(JSON.stringify({
+          type: "ice",
+          to_id: peerId,
+          candidate: e.candidate,
+        }));
       }
     };
 
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
-      if (s === "connected") {
-        setStatus("connected");
-        if (iceRestartTimerRef.current) { clearTimeout(iceRestartTimerRef.current); iceRestartTimerRef.current = null; }
-      }
-      if (s === "failed") {
-        // Auto ICE restart — renegotiate without requiring the user to rejoin
-        console.warn("[WebRTC] Connection failed — attempting ICE restart");
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-        setStatus("connecting");
-        try { pc.restartIce(); } catch {}
-      }
+      if (s === "connected") setStatus("connected");
+      if (s === "failed") { try { pc.restartIce(); } catch {} }
       if (s === "disconnected") {
-        setStatus("waiting");
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      }
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      const s = pc.iceConnectionState;
-      if (s === "connected" || s === "completed") setStatus("connected");
-      if (s === "failed") {
-        setStatus("connecting");
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-        try { pc.restartIce(); } catch {}
-      }
-      if (s === "disconnected") {
-        setStatus("waiting");
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        const anyConnected = [...peersRef.current.values()]
+          .some(({ pc: p }) => p.connectionState === "connected");
+        if (!anyConnected) setStatus("waiting");
       }
     };
 
     return pc;
-  }, []);
+  }, [syncPeers]);
 
-  const attachRemoteVideoRef = useCallback((el) => {
-    remoteVideoRef.current = el;
-    if (el && remoteStreamRef.current) {
-      el.srcObject = remoteStreamRef.current;
-      el.play?.().catch(() => {});
-    }
-  }, []);
-
-  const addLocalTracks = useCallback((pc, stream) => {
-    const mediaStream = stream || localVideoRef.current?.srcObject;
-    const tracks      = mediaStream?.getTracks?.() || [];
-    if (!tracks.length) return false;
-    tracks.forEach((track) => {
-      if (!pc.getSenders().some((s) => s.track === track)) pc.addTrack(track, mediaStream);
-    });
-    return true;
-  }, []);
-
+  // ── Join a room ──────────────────────────────────────────────────────────────
   const joinRoom = useCallback(async (roomId, localStream, userName) => {
     cleanup();
     setStatus("connecting");
+    localStreamRef.current = localStream;
+    myNameRef.current = userName || "User";
 
-    const wsBase   = getWsBase();
-    const signalWs = new WebSocket(`${wsBase}/ws/signal/${roomId}`);
-    const chatWs   = new WebSocket(`${wsBase}/ws/chat/${roomId}`);
+    const wsBase    = getWsBase();
+    const signalWs  = new WebSocket(`${wsBase}/ws/signal/${roomId}`);
+    const chatWs    = new WebSocket(`${wsBase}/ws/chat/${roomId}`);
     signalWsRef.current = signalWs;
     chatWsRef.current   = chatWs;
 
-    chatWs.onopen = () => {
-      chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User" }));
-    };
-
+    // ── Chat WebSocket ─────────────────────────────────────────────────────────
     chatWs.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.slot === mySlotRef.current) return;
+        // Ignore own messages
+        if (msg.peer_id && msg.peer_id === myIdRef.current) return;
+
         if (msg.type === "name") {
-          setPeerName(msg.name);
-          if (!msg.isReply) {
-            chatWs.send(JSON.stringify({ type: "name", slot: mySlotRef.current, name: userName || "User", isReply: true }));
+          // Update that peer's name in the map
+          const entry = peersRef.current.get(msg.peer_id);
+          if (entry) {
+            peersRef.current.set(msg.peer_id, { ...entry, name: msg.name });
+            syncPeers();
+          }
+          // Reply once so they know our name
+          if (!msg.isReply && chatWs.readyState === WebSocket.OPEN) {
+            chatWs.send(JSON.stringify({
+              type: "name", name: myNameRef.current,
+              peer_id: myIdRef.current, isReply: true,
+            }));
           }
         }
-        if (msg.type === "chat")        setPeerChat({ text: msg.text, id: Date.now() });
+
         if (msg.type === "translation") {
           if (msg.sentence !== undefined) setPeerSentence(msg.sentence);
           if (msg.word     !== undefined) setPeerWord(msg.word);
         }
+
         if (msg.type === "suggestion") {
           setPeerSuggestion(msg.text || "");
           setTimeout(() => setPeerSuggestion(""), 7000);
         }
+
+        if (msg.type === "chat") {
+          setPeerChat({ text: msg.text, sender: msg.name || "Partner", id: Date.now() });
+        }
       } catch {}
     };
 
+    // ── Signal WebSocket ───────────────────────────────────────────────────────
     signalWs.onmessage = async (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
@@ -237,71 +252,109 @@ export function useVideoCall() {
       switch (msg.type) {
 
         case "joined": {
-          mySlotRef.current = msg.slot;
-          setMySlot(msg.slot);
-          setStatus(msg.slot === "user1" ? "waiting" : "connecting");
+          // Server assigned us a peer_id + list of who is already in the room
+          myIdRef.current = msg.peer_id;
+          setMyId(msg.peer_id);
 
-          const pc = buildPeerConnection((c) =>
-            signalWs.readyState === WebSocket.OPEN &&
-            signalWs.send(JSON.stringify({ type: "ice", candidate: c }))
-          );
-          pcRef.current = pc;
-          addLocalTracks(pc, localStream);
+          if (msg.existing_peers.length === 0) {
+            setStatus("waiting");
+          } else {
+            setStatus("connecting");
+            // We are the newcomer — send offers to every existing peer
+            for (const existingId of msg.existing_peers) {
+              const pc = createPeerConnection(existingId);
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await waitForIceGathering(pc);
+              signalWs.send(JSON.stringify({
+                type: "offer", to_id: existingId, sdp: pc.localDescription,
+              }));
+            }
+            syncPeers();
+          }
 
-          if (msg.slot === "user2") {
-            // Non-trickle ICE: gather ALL candidates before sending the offer.
-            // This makes the SDP self-contained — no separate ice messages needed.
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            await waitForIceGathering(pc);
-            signalWs.send(JSON.stringify({ type: "offer", sdp: pc.localDescription }));
+          // Announce our name to everyone in the room (via chat WS)
+          setTimeout(() => {
+            if (chatWs.readyState === WebSocket.OPEN) {
+              chatWs.send(JSON.stringify({
+                type: "name", name: myNameRef.current, peer_id: msg.peer_id,
+              }));
+            }
+          }, 600);
+          break;
+        }
+
+        case "peer_joined": {
+          // Someone new joined after us. They will send us an offer — just prep the PC.
+          const newId = msg.peer_id;
+          if (!peersRef.current.has(newId)) {
+            createPeerConnection(newId);
+            syncPeers();
           }
           break;
         }
 
         case "offer": {
-          const pc = pcRef.current; if (!pc) return;
+          const fromId = msg.from_id;
+          const pc = createPeerConnection(fromId);
           await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-          // Flush any ICE candidates that arrived before the offer
-          for (const c of pendingCandidatesRef.current) {
+          // Flush buffered ICE candidates
+          for (const c of (pendingCandidatesRef.current.get(fromId) || [])) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
           }
-          pendingCandidatesRef.current = [];
-          // Non-trickle ICE: gather ALL candidates before sending answer
+          pendingCandidatesRef.current.delete(fromId);
+          // Send answer
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           await waitForIceGathering(pc);
-          signalWs.send(JSON.stringify({ type: "answer", sdp: pc.localDescription }));
+          signalWs.send(JSON.stringify({
+            type: "answer", to_id: fromId, sdp: pc.localDescription,
+          }));
           break;
         }
 
         case "answer": {
-          const pc = pcRef.current; if (!pc) return;
+          const fromId = msg.from_id;
+          const pc = peersRef.current.get(fromId)?.pc;
+          if (!pc) return;
           await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-          for (const c of pendingCandidatesRef.current) {
+          for (const c of (pendingCandidatesRef.current.get(fromId) || [])) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
           }
-          pendingCandidatesRef.current = [];
+          pendingCandidatesRef.current.delete(fromId);
           break;
         }
 
         case "ice": {
-          // Late trickle candidates — add them as a bonus even in non-trickle mode
-          const pc = pcRef.current; if (!pc || !msg.candidate) return;
-          if (!pc.remoteDescription) { pendingCandidatesRef.current.push(msg.candidate); return; }
+          const fromId = msg.from_id;
+          const pc = peersRef.current.get(fromId)?.pc;
+          if (!pc || !msg.candidate) return;
+          if (!pc.remoteDescription) {
+            const buf = pendingCandidatesRef.current.get(fromId) || [];
+            buf.push(msg.candidate);
+            pendingCandidatesRef.current.set(fromId, buf);
+            return;
+          }
           try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
           break;
         }
 
         case "peer_left": {
-          setStatus("waiting");
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-          setPeerSentence(""); setPeerWord(""); setPeerSuggestion(""); setPeerName("");
+          const leftId = msg.peer_id;
+          const entry = peersRef.current.get(leftId);
+          if (entry) {
+            try { entry.pc.close(); } catch {}
+            peersRef.current.delete(leftId);
+            pendingCandidatesRef.current.delete(leftId);
+            syncPeers();
+          }
+          if (peersRef.current.size === 0) setStatus("waiting");
           break;
         }
 
         case "full": {
-          setStatus("full"); cleanup();
+          setStatus("full");
+          cleanup();
           break;
         }
 
@@ -310,40 +363,55 @@ export function useVideoCall() {
     };
 
     signalWs.onerror = () => setStatus("error");
-    signalWs.onclose = (e) => { if (e.code !== 1000) setStatus("idle"); };
-  }, [cleanup, buildPeerConnection, addLocalTracks]);
+    signalWs.onclose = (ev) => { if (ev.code !== 1000) setStatus("idle"); };
+  }, [cleanup, createPeerConnection, syncPeers]);
 
-  const leaveRoom = useCallback(() => { cleanup(); setStatus("idle"); }, [cleanup]);
+  // ── Leave room ────────────────────────────────────────────────────────────────
+  const leaveRoom = useCallback(() => cleanup(), [cleanup]);
 
-  const getPeerConnection = useCallback(() => pcRef.current, []);
+  // ── Replace video track on ALL peer connections (for screen share) ────────────
+  const replaceVideoTrack = useCallback((newTrack) => {
+    for (const { pc } of peersRef.current.values()) {
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) sender.replaceTrack(newTrack).catch(() => {});
+    }
+  }, []);
 
+  // ── Chat / translation senders ────────────────────────────────────────────────
   const sendTranslation = useCallback((word, sentence) => {
     const ws = chatWsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "translation", slot: mySlotRef.current, word, sentence }));
+    ws.send(JSON.stringify({ type: "translation", peer_id: myIdRef.current, word, sentence }));
   }, []);
 
   const sendSuggestion = useCallback((text) => {
     const ws = chatWsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "suggestion", slot: mySlotRef.current, text }));
+    ws.send(JSON.stringify({ type: "suggestion", peer_id: myIdRef.current, text }));
   }, []);
 
   const sendChatMessage = useCallback((text) => {
     const ws = chatWsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "chat", slot: mySlotRef.current, text }));
+    ws.send(JSON.stringify({ type: "chat", peer_id: myIdRef.current, name: myNameRef.current, text }));
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
 
   return {
-    localVideoRef, remoteVideoRef,
-    status, mySlot,
-    peerSentence, peerWord, peerSuggestion, peerName, peerChat,
-    attachRemoteVideoRef,
-    joinRoom, leaveRoom,
-    getPeerConnection,
-    sendTranslation, sendSuggestion, sendChatMessage,
+    status,
+    myId,
+    remotePeers,
+    peerSentence,
+    peerWord,
+    peerSuggestion,
+    peerName,
+    peerChat,
+    joinRoom,
+    leaveRoom,
+    replaceVideoTrack,
+    sendTranslation,
+    sendSuggestion,
+    sendChatMessage,
   };
 }
