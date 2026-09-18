@@ -1,0 +1,72 @@
+sequenceDiagram
+    actor User
+    participant Browser as React Frontend<br/>(useWebcam)
+    participant Vite as Vite Proxy<br/>(Dev only)
+    participant API as FastAPI Server<br/>(/predict)
+    participant CV as OpenCV<br/>(Image Decoder)
+    participant MP as MediaPipe Hands<br/>(Landmark Extractor)
+    participant ML as scikit-learn Pipeline<br/>(PCA → Scaler → SVM)
+    participant LE as LabelEncoder
+    participant Ctx as AppContext<br/>(State + localStorage)
+    participant GTranslate as Google Translate API
+
+    Note over User,GTranslate: Phase 1 — Initialization
+
+    User->>Browser: Navigate to /translate
+    Browser->>Browser: navigator.mediaDevices.getUserMedia<br/>({video: 480×360, audio: true})
+    Browser-->>User: Webcam preview displayed
+
+    Browser->>API: GET /health
+    API-->>Browser: {status: "ok", model_loaded: true}
+    Note right of Browser: Backend health confirmed<br/>Sidebar shows "Model Online"
+
+    Note over User,GTranslate: Phase 2 — Detection Loop (4 FPS)
+
+    User->>User: Performs ISL sign<br/>(e.g., "Hello")
+
+    loop Every 250ms (4 FPS)
+        Browser->>Browser: Capture frame via<br/>offscreen canvas.toDataURL<br/>('image/jpeg', 0.7)
+        Browser->>API: POST /predict<br/>{image: "<base64 JPEG>"}
+
+        API->>CV: base64.b64decode → np.frombuffer<br/>→ cv2.imdecode(IMREAD_COLOR)
+        CV-->>API: BGR frame (numpy array)
+
+        API->>MP: extractor.extract_from_frames([frame])
+        MP->>MP: MediaPipe Hands.process(RGB frame)
+        MP->>MP: Extract 21 landmarks × 3 coords × 2 hands = 126
+        MP->>MP: Wrist-relative normalization → 126
+        MP->>MP: Concatenate raw + norm → 252-dim vector
+        MP-->>API: features (252,) or None
+
+        alt No hand detected
+            API-->>Browser: {sign: "No hand detected",<br/>hand_detected: false, confidence: 0.0}
+        else Hand detected
+            API->>ML: model.predict_proba(features)
+            ML->>ML: PCA(120) → StandardScaler → SVM.predict_proba
+            ML-->>API: probability array (9 classes)
+            API->>LE: encoder.classes_[argmax(probs)]
+            LE-->>API: predicted_label = "Hello"
+            API-->>Browser: {sign: "Hello", confidence: 0.985,<br/>all_scores: {...}, hand_detected: true,<br/>inference_ms: 14.2}
+        end
+
+        Browser->>Browser: Update prediction display<br/>+ word buffer
+    end
+
+    Note over User,GTranslate: Phase 3 — Sentence Formation
+
+    User->>User: Removes hand from view<br/>(2 seconds of no detection)
+
+    Browser->>Ctx: getSuggestions(["Hello", "How"])<br/>→ Rule-based grammar suggestions
+    Ctx-->>Browser: ["Hello, How are you?",<br/>"Hello, Nice to meet you!", ...]
+    Browser-->>User: Display grammar suggestion chips
+
+    User->>Browser: Selects "Hello, How are you?"
+    Browser->>Ctx: addToHistory({sentence, words,<br/>confidence, timestamp})
+    Ctx->>Ctx: Persist to localStorage<br/>(last 50 entries)
+
+    Note over User,GTranslate: Phase 4 — Multilingual Translation (Optional)
+
+    User->>Browser: Tap Hindi translation button
+    Browser->>GTranslate: GET translate.googleapis.com/translate_a/single<br/>?client=gtx&sl=en&tl=hi&dt=t<br/>&q=Hello,%20How%20are%20you?
+    GTranslate-->>Browser: [["नमस्ते, आप कैसे हैं?", ...]]
+    Browser-->>User: Display Hindi translation<br/>+ TTS via SpeechSynthesisUtterance

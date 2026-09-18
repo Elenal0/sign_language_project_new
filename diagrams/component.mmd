@@ -1,0 +1,123 @@
+graph TB
+    %% ── USER ──────────────────────────────────────────────────────
+    User((👤 User))
+
+    %% ── FRONTEND ──────────────────────────────────────────────────
+    subgraph Frontend["🖥️ Frontend — React 18 SPA (Vite 5)"]
+        direction TB
+
+        subgraph Pages["Pages (react-router-dom v6)"]
+            Home["Home\n(3D Cinematic Landing)"]
+            Translator["Translator\n(Solo + Video Call)"]
+            Dictionary["Dictionary\n(68 ISL Signs)"]
+            LearnPage["Learn\n(Flashcards + Quiz)"]
+            HistoryPage["History\n(Saved Translations)"]
+            DashboardPage["Dashboard\n(Analytics Charts)"]
+        end
+
+        subgraph UIShell["Layout Shell"]
+            Navbar["Navbar\n(Route Nav + Theme Toggle)"]
+            Sidebar["Sidebar\n(Model Status Polling)"]
+            Toast["AnimatedToast"]
+            CmdPalette["CommandPalette\n(Ctrl+K Search)"]
+        end
+
+        subgraph Hooks["Custom Hooks (Services)"]
+            useWebcam["useWebcam\n• Webcam capture\n• Base64 JPEG encoding\n• POST /predict at 4 FPS"]
+            useVideoCall["useVideoCall\n• WebRTC PeerConnection\n• Signaling WebSocket\n• Chat WebSocket\n• Screen sharing"]
+            useHandCursor["useHandCursor\n• MediaPipe Hands (WASM)\n• Pinch-click detection\n• Dwell-click + Scroll zones"]
+        end
+
+        subgraph StateLayer["State Management"]
+            AppContext["AppContext\n• Theme (dark/light)\n• Translation history\n• Toast notifications\n• Grammar suggestions"]
+            LocalStorage[("localStorage\n(Persistence)")]
+        end
+
+        subgraph ThreeEngine["3D Engine (Three.js)"]
+            CinematicScene["CinematicScene\n(Scroll camera + Fog)"]
+            FloatingRocks["FloatingRocks\n(Procedural asteroids)"]
+            GPUParticles["GPUParticles\n(65K GPGPU FBO sim)"]
+        end
+    end
+
+    %% ── BACKEND ───────────────────────────────────────────────────
+    subgraph Backend["⚙️ Backend — FastAPI (Uvicorn)"]
+        direction TB
+
+        subgraph APILayer["REST API Layer"]
+            PredictEP["POST /predict\n(Sign Inference)"]
+            HealthEP["GET /health\n(Model Status)"]
+            ClassesEP["GET /classes\n(Trained Classes)"]
+        end
+
+        subgraph WSLayer["WebSocket Layer"]
+            SignalWS["WS /ws/signal/{room}\n(WebRTC SDP + ICE Relay)"]
+            ChatWS["WS /ws/chat/{room}\n(Translation + Chat Broadcast)"]
+            RoomState[("In-Memory Room State\n(signal_rooms, chat_rooms)")]
+        end
+
+        subgraph MLPipeline["ML Inference Pipeline"]
+            ImgDecode["Image Decoder\n(Base64 → OpenCV)"]
+            HandExtractor["HandLandmarkExtractor\n(MediaPipe Hands)"]
+            FeatureEng["Feature Engineering\n(252-dim: raw + normalized)"]
+            SKLearnPipe["scikit-learn Pipeline\n(PCA → Scaler → SVM)"]
+            LabelDecode["Label Decoder\n(LabelEncoder)"]
+        end
+
+        subgraph NLPPipeline["NLP Pipeline (Offline Mode)"]
+            GlossExpand["Gloss Expansion\n(ISL → English candidates)"]
+            T5GEC["T5 GEC Model\n(vennify/t5-base-grammar-correction)"]
+        end
+
+        subgraph ModelStore["Model Storage (File System)"]
+            ModelPKL[("sign_language_model.pkl\n(SVM Pipeline)")]
+            EncoderPKL[("label_encoder.pkl")]
+            DataNPY[("X.npy / y.npy\n(Training Data)")]
+        end
+    end
+
+    %% ── EXTERNAL SERVICES ─────────────────────────────────────────
+    subgraph External["🌐 External Services"]
+        GoogleTranslate["Google Translate API\n(EN → HI/MR)"]
+        MyMemory["MyMemory API\n(Fallback Translation)"]
+        STUN["Google STUN Servers\n(NAT Traversal)"]
+        TURN["Metered.ca TURN\n(Relay Fallback)"]
+        GoogleFonts["Google Fonts CDN"]
+        jsDelivr["jsDelivr CDN\n(MediaPipe WASM)"]
+        HFHub["HuggingFace Hub\n(T5 Model Download)"]
+    end
+
+    %% ── DATA FLOW ARROWS ──────────────────────────────────────────
+    User --> Pages
+    User --> useHandCursor
+
+    Translator --> useWebcam
+    Translator --> useVideoCall
+    Translator --> GoogleTranslate
+    Translator --> MyMemory
+
+    Pages --> AppContext
+    AppContext --> LocalStorage
+
+    Sidebar -->|"GET /health (30s poll)"| HealthEP
+
+    useWebcam -->|"POST /predict\n{image: base64}"| PredictEP
+    PredictEP --> ImgDecode --> HandExtractor --> FeatureEng --> SKLearnPipe --> LabelDecode
+    SKLearnPipe -.->|loads| ModelPKL
+    LabelDecode -.->|loads| EncoderPKL
+    LabelDecode -->|"{sign, confidence,\nall_scores, inference_ms}"| useWebcam
+
+    useVideoCall -->|"WebSocket"| SignalWS
+    useVideoCall -->|"WebSocket"| ChatWS
+    SignalWS --> RoomState
+    ChatWS --> RoomState
+
+    useVideoCall -->|"ICE Negotiation"| STUN
+    useVideoCall -->|"TURN Relay"| TURN
+
+    useHandCursor -->|"WASM model load"| jsDelivr
+
+    NLPPipeline -.->|"used by realtime.py\n(desktop mode)"| T5GEC
+    T5GEC -.->|"first-run download"| HFHub
+
+    Home --> ThreeEngine

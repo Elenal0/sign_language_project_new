@@ -1,0 +1,70 @@
+graph TB
+    %% ── CLIENT DEVICE ─────────────────────────────────────────────
+    subgraph ClientDevice["🖥️ Client Device (User's Browser)"]
+        direction TB
+
+        subgraph BrowserRuntime["Web Browser (Chrome/Edge/Firefox)"]
+            ReactSPA["React 18 SPA\n(Vite-built bundle)\n• Pages & Components\n• AppContext (State)\n• Tailwind CSS UI"]
+            WebcamAPI["WebRTC getUserMedia\n(Webcam + Mic)"]
+            MPWasm["MediaPipe Hands\n(WASM — client-side)\nvia useHandCursor"]
+            ThreeGL["Three.js WebGL Canvas\n(GPGPU Particles + Scene)"]
+            PeerConn["RTCPeerConnection\n(P2P Video/Audio)"]
+            SpeechAPI["Web Speech API\n(Text-to-Speech)"]
+            LStor[("localStorage\n• Theme\n• History\n• Translation count")]
+        end
+    end
+
+    %% ── VERCEL ────────────────────────────────────────────────────
+    subgraph VercelNode["☁️ Vercel (Frontend Hosting)"]
+        StaticAssets["Static Assets\n(HTML, JS, CSS bundles)\nSPA fallback: vercel.json"]
+    end
+
+    %% ── RENDER ────────────────────────────────────────────────────
+    subgraph RenderNode["☁️ Render (Backend Hosting)"]
+        direction TB
+
+        subgraph UvicornProcess["Uvicorn ASGI Server (Port 8000)"]
+            FastAPIApp["FastAPI Application\n• REST: /predict, /health, /classes\n• WS: /ws/signal, /ws/chat"]
+            MediaPipeServer["MediaPipe Hands\n(Python — server-side)"]
+            SKLearn["scikit-learn Pipeline\n(PCA + Scaler + SVM)"]
+            NLPModel["T5 GEC Model\n(vennify/t5-base-grammar-correction)\n*Used in desktop realtime.py only*"]
+        end
+
+        subgraph FileStore["File System Storage"]
+            Models[("models/\n• sign_language_model.pkl\n• svm_model.pkl\n• mlp_model.pkl\n• model_info.json")]
+            Data[("data/processed/\n• X.npy, y.npy\n• label_encoder.pkl")]
+        end
+    end
+
+    %% ── DEV ENVIRONMENT ───────────────────────────────────────────
+    subgraph DevEnv["💻 Development Environment (localhost)"]
+        ViteDev["Vite Dev Server\n(Port 5174)\nProxy: /predict → :8000\nProxy: /ws → :8000"]
+        UvicornDev["Uvicorn Dev\n(Port 8000)"]
+    end
+
+    %% ── EXTERNAL ──────────────────────────────────────────────────
+    subgraph ExternalInfra["🌐 External Infrastructure"]
+        GoogleSTUN["Google STUN\nstun:stun.l.google.com:19302\n(UDP)"]
+        MeteredTURN["Metered.ca TURN\nturn:openrelay.metered.ca:80\nturn:...:443/tcp"]
+        GoogleTransAPI["Google Translate API\n(HTTPS GET)"]
+        MyMemoryAPI["MyMemory API\n(HTTPS GET)"]
+        FontsCDN["Google Fonts\n(HTTPS — CSS + WOFF2)"]
+        MPCdn["jsDelivr CDN\n(HTTPS — MediaPipe WASM)"]
+        HFAPI["HuggingFace Hub\n(HTTPS — T5 model weights)"]
+    end
+
+    %% ── CONNECTIONS ───────────────────────────────────────────────
+    ClientDevice -->|"HTTPS\n(Static assets)"| VercelNode
+    ReactSPA -->|"HTTPS POST/GET\n(REST API)"| FastAPIApp
+    ReactSPA -->|"WSS\n(WebSocket)"| FastAPIApp
+    PeerConn <-->|"P2P Media\n(SRTP/DTLS)"| PeerConn
+    PeerConn -->|"UDP\n(STUN binding)"| GoogleSTUN
+    PeerConn -->|"UDP/TCP\n(TURN relay)"| MeteredTURN
+    ReactSPA -->|"HTTPS GET"| GoogleTransAPI
+    ReactSPA -->|"HTTPS GET"| MyMemoryAPI
+    BrowserRuntime -->|"HTTPS"| FontsCDN
+    MPWasm -->|"HTTPS\n(WASM + TFLite)"| MPCdn
+    FastAPIApp --> FileStore
+    NLPModel -.->|"HTTPS\n(first-run download)"| HFAPI
+
+    ViteDev -->|"HTTP Proxy"| UvicornDev

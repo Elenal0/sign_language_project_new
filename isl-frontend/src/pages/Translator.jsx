@@ -679,242 +679,186 @@ export default function Translator() {
   const meta = STATUS_META[callStatus] || STATUS_META.idle;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER
+  // RENDER — Light Theme (Drishya Vaani)
   // ═══════════════════════════════════════════════════════════════════════════
-  
-  // Render variables
+
+  const PAGE_BG = 'linear-gradient(160deg, #faf8ff 0%, #eef2ff 45%, #fdf6ff 100%)';
+  const GLASS   = 'rgba(255,255,255,0.72)';
+  const GLASS_B = '1px solid rgba(196,181,253,0.28)';
+  const ACCENT  = '#7c3aed';
+  const TEXT    = '#1e1b4b';
+  const MUTED   = '#64748b';
+  const FAINT   = '#94a3b8';
+
   return (
-    <div className="flex flex-col h-full bg-[#050505] text-white overflow-hidden relative font-sans">
-      
-      {/* Meeting Ready Modal — shown when host is waiting for partner */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: PAGE_BG, color: TEXT, overflow: 'hidden', position: 'relative', fontFamily: "'Inter', system-ui, sans-serif" }}>
+
       {showMeetingModal && (
-        <MeetingReadyModal
-          roomCode={roomInput}
-          onDismiss={() => setShowMeetingModal(false)}
-        />
+        <MeetingReadyModal roomCode={roomInput} onDismiss={() => setShowMeetingModal(false)} />
       )}
 
-      {/* Subtle Glowing Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div aria-hidden="true" style={{ position: 'absolute', width: 600, height: 600, top: -200, left: -200, borderRadius: '50%', filter: 'blur(90px)', background: 'radial-gradient(circle, rgba(196,181,253,0.28) 0%, transparent 65%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div aria-hidden="true" style={{ position: 'absolute', width: 500, height: 500, bottom: -150, right: -100, borderRadius: '50%', filter: 'blur(80px)', background: 'radial-gradient(circle, rgba(186,230,255,0.22) 0%, transparent 65%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* HEADER */}
-      <header className="relative z-50 flex items-center justify-between px-6 py-4 shrink-0">
-        {/* Left: Branding & Status */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl">
-            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} className="p-1.5 bg-indigo-500/20 rounded-lg">
-              <Video className="w-4 h-4 text-indigo-400" />
+      <header style={{ position: 'relative', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(196,181,253,0.2)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.45rem 1rem' }}>
+            <motion.div animate={{ scale: [1, 1.12, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
+              <Video style={{ width: 15, height: 15, color: ACCENT }} />
             </motion.div>
-            <h1 className="font-semibold text-sm tracking-wide">Drishya Vaani</h1>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: TEXT }}>Drishya Vaani</span>
           </div>
-          
           {(isActive || backendReady) && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-medium text-emerald-400">SignSync™ Active</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.22)' }}>
+              <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: 7, height: 7, borderRadius: '50%', background: '#059669' }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669' }}>SignSync™ Active</span>
             </div>
           )}
         </div>
 
-        {/* Center: Language & Mode */}
-        <div className="flex items-center gap-4">
-          <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '12px', padding: '3px' }}>
             {Object.entries(LANG_CONFIG).map(([code, cfg]) => (
-              <button key={code} onClick={() => setLanguage(code)} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${language === code ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
-                {cfg.label}
-              </button>
+              <button key={code} onClick={() => setLanguage(code)} style={{ padding: '0.3rem 0.85rem', borderRadius: '9px', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.18s', background: language === code ? ACCENT : 'transparent', color: language === code ? '#fff' : MUTED, boxShadow: language === code ? '0 2px 12px rgba(124,58,237,0.3)' : 'none' }}>{cfg.label}</button>
             ))}
           </div>
-          <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
+          <div style={{ display: 'flex', background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '12px', padding: '3px' }}>
             {[{ id: 'solo', label: 'Solo', icon: User }, { id: 'call', label: 'Call', icon: Users }].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => handleModeSwitch(id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === id ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-gray-400 hover:text-white'}`}>
-                <Icon className="w-3.5 h-3.5" /> {label}
+              <button key={id} onClick={() => handleModeSwitch(id)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.85rem', borderRadius: '9px', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.18s', background: mode === id ? ACCENT : 'transparent', color: mode === id ? '#fff' : MUTED, boxShadow: mode === id ? '0 2px 12px rgba(124,58,237,0.3)' : 'none' }}>
+                <Icon style={{ width: 12, height: 12 }} /> {label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Right: Security & Time */}
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-            End-to-end Encrypted
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)' }}>
+            <Sparkles style={{ width: 11, height: 11, color: '#059669' }} />
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#059669' }}>End-to-end Encrypted</span>
           </div>
-          <div className="text-sm font-medium text-gray-300 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-            {currentTime}
-          </div>
+          <div style={{ padding: '0.35rem 0.85rem', borderRadius: '10px', background: GLASS, border: GLASS_B, fontSize: '0.8rem', fontWeight: 600, color: TEXT }}>{currentTime}</div>
         </div>
       </header>
 
-      {/* LOBBY OR MAIN CALL */}
+      {/* LOBBY */}
       {!inRoom && mode === 'call' ? (
-        <div className="flex-1 flex items-center justify-center relative z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2rem] w-full max-w-md shadow-2xl flex flex-col gap-6">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-4 border border-indigo-500/30">
-                <Users className="text-indigo-400 w-6 h-6" />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: GLASS, backdropFilter: 'blur(24px)', border: GLASS_B, borderRadius: '28px', padding: '2.5rem', width: '100%', maxWidth: '420px', boxShadow: '0 24px 80px rgba(124,58,237,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ margin: '0 auto 1rem', width: 52, height: 52, borderRadius: '16px', background: 'rgba(124,58,237,0.08)', border: '1.5px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users style={{ color: ACCENT, width: 22, height: 22 }} />
               </div>
-              <h2 className="text-2xl font-semibold mb-2">Join Session</h2>
-              <p className="text-sm text-gray-400">Enter your name and the room code to connect.</p>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: TEXT, marginBottom: '0.4rem' }}>Join Session</h2>
+              <p style={{ fontSize: '0.84rem', color: MUTED }}>Enter your name and room code to connect.</p>
             </div>
-            
-            <div className="flex flex-col gap-4">
-              <input
-                value={userName}
-                onChange={e => setUserName(e.target.value)}
-                placeholder="Your Name"
-                className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-              <input
-                value={roomInput}
-                onChange={e => setRoomInput(normalizeRoomCode(e.target.value))}
-                onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
-                placeholder="ROOM CODE"
-                maxLength={8}
-                className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors uppercase tracking-widest text-center font-mono font-bold"
-              />
-              <motion.button onClick={handleJoinRoom} className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 font-medium transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <input value={userName} onChange={e => setUserName(e.target.value)} placeholder="Your Name"
+                style={{ background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.75rem 1rem', fontSize: '0.88rem', color: TEXT, outline: 'none' }} />
+              <input value={roomInput} onChange={e => setRoomInput(normalizeRoomCode(e.target.value))} onKeyDown={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ROOM CODE" maxLength={8}
+                style={{ background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.75rem 1rem', fontSize: '0.92rem', fontWeight: 700, letterSpacing: '0.18em', textAlign: 'center', fontFamily: 'monospace', color: TEXT, outline: 'none', textTransform: 'uppercase' }} />
+              <motion.button onClick={handleJoinRoom} whileHover={{ scale: 1.02, boxShadow: '0 12px 36px rgba(124,58,237,0.3)' }} whileTap={{ scale: 0.97 }}
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '0.85rem', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
                 Join Call
               </motion.button>
             </div>
           </motion.div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden px-4 pb-4 gap-4 relative z-10">
-          
-          {/* MAIN VIDEO AREA */}
-          <div className="flex-1 relative rounded-[2rem] overflow-hidden border border-white/10 bg-black/40 shadow-2xl flex items-center justify-center">
-            
-            {/* The Main Video Stream (Remote in Call, Local in Solo) */}
+        /* MAIN LAYOUT */
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '0.85rem', gap: '0.85rem', position: 'relative', zIndex: 10 }}>
+
+          {/* VIDEO AREA */}
+          <div style={{ flex: 1, position: 'relative', borderRadius: '24px', overflow: 'hidden', background: 'rgba(12,9,35,0.94)', border: '1.5px solid rgba(196,181,253,0.22)', boxShadow: '0 20px 60px rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+
             {mode === 'call' ? (
               <>
-                {/* ── Multi-party grid of remote peers ── */}
                 {remotePeers.size > 0 ? (
-                  <VideoGrid
-                    remotePeers={remotePeers}
-                    pinnedPeerId={pinnedPeerId}
-                    onPinToggle={setPinnedPeerId}
-                  />
+                  <VideoGrid remotePeers={remotePeers} pinnedPeerId={pinnedPeerId} onPinToggle={setPinnedPeerId} />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-gray-400 z-10">
-                    <Loader2 className="w-8 h-8 animate-spin" />
-                    <p>{callStatus === 'waiting' ? 'Waiting for others to join…' : 'Connecting…'}</p>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: FAINT, zIndex: 10 }}>
+                    <Loader2 style={{ width: 32, height: 32, animation: 'spin 1s linear infinite' }} />
+                    <p style={{ fontSize: '0.9rem' }}>{callStatus === 'waiting' ? 'Waiting for others…' : 'Connecting…'}</p>
                   </div>
                 )}
               </>
             ) : (
-               <>
-                  {/* Video — mirrored for self-view */}
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{ backfaceVisibility: 'hidden' }}
-                    className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
-                  />
-                  {/* Canvas is HIDDEN — only used for ML frame capture, not display */}
-                  <canvas
-                    ref={canvasRef}
-                    style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-                  />
-                  {!isActive && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-4 z-10">
-                       <button onClick={handleStart} className="bg-indigo-600 px-6 py-3 rounded-full font-medium hover:bg-indigo-500">Start Camera</button>
+              <>
+                <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', backfaceVisibility: 'hidden' }} />
+                <canvas ref={canvasRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }} />
+                {!isActive && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', background: 'rgba(12,9,35,0.85)', zIndex: 10 }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '20px', background: 'rgba(124,58,237,0.15)', border: '2px solid rgba(124,58,237,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Video style={{ color: '#a78bfa', width: 30, height: 30 }} />
                     </div>
-                  )}
-               </>
-            )}
-
-            {/* Dark gradient for text readability */}
-            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
-
-            {/* Top Left — participant count badge (Call mode) */}
-            {mode === 'call' && remotePeers.size > 0 && (
-              <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3 z-10">
-                <div className="flex items-end gap-1 h-3">
-                  {[1,2,3,4,5].map(i => (
-                    <motion.div key={i} animate={{ height: ['4px', '12px', '4px'] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }} className="w-1 bg-emerald-400 rounded-full" />
-                  ))}
-                </div>
-                <span className="text-sm font-medium">
-                  {remotePeers.size === 1 ? (peerName || 'Partner') : `${remotePeers.size + 1} participants`}
-                </span>
-              </div>
-            )}
-
-            {/* AI Tracking Badge */}
-            {(mode === 'solo' || (mode === 'call' && remotePeers.size > 0)) && isAslActive && (
-              <div className={`absolute top-6 ${mode === 'call' ? 'left-40' : 'right-6'} bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2 z-10`}>
-                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                 <span className="text-xs font-medium text-indigo-300">AI Tracking Active</span>
-              </div>
-            )}
-
-            {/* Local video PiP — draggable, always in corner */}
-            {mode === 'call' && (
-              <motion.div
-                drag
-                dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
-                className="absolute top-6 right-6 w-48 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl cursor-move z-20"
-                whileHover={{ borderColor: 'rgba(255,255,255,0.4)' }}
-              >
-                <video
-                  ref={(el) => {
-                    videoRef.current = el;
-                    if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream();
-                  }}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1] pointer-events-none"
-                />
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                  <div className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
-                    {userName || 'You'}
+                    <p style={{ color: FAINT, fontSize: '0.88rem' }}>Camera is off</p>
+                    <motion.button onClick={handleStart} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
+                      style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', border: 'none', borderRadius: '100px', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
+                      Start Camera
+                    </motion.button>
                   </div>
-                  {isMuted && <div className="bg-red-500/80 p-1.5 rounded-full"><VolumeX className="w-3 h-3" /></div>}
+                )}
+              </>
+            )}
+
+            {/* Bottom gradient */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%', background: 'linear-gradient(to top, rgba(10,8,30,0.95) 0%, rgba(10,8,30,0.5) 45%, transparent 100%)', pointerEvents: 'none', zIndex: 5 }} />
+
+            {/* Participant badge */}
+            {mode === 'call' && remotePeers.size > 0 && (
+              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '12px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', zIndex: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 12 }}>
+                  {[1,2,3,4,5].map(i => <motion.div key={i} animate={{ height: ['4px','12px','4px'] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }} style={{ width: 3, background: '#34d399', borderRadius: 2 }} />)}
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#fff' }}>{remotePeers.size === 1 ? (peerName || 'Partner') : `${remotePeers.size + 1} participants`}</span>
+              </div>
+            )}
+
+            {/* AI Tracking badge */}
+            {(mode === 'solo' || (mode === 'call' && remotePeers.size > 0)) && isAslActive && (
+              <div style={{ position: 'absolute', top: '1rem', ...(mode === 'call' ? { left: '10.5rem' } : { right: '1rem' }), background: 'rgba(124,58,237,0.18)', backdropFilter: 'blur(12px)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '10px', padding: '0.4rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem', zIndex: 10 }}>
+                <Sparkles style={{ width: 13, height: 13, color: '#a78bfa' }} />
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#c4b5fd' }}>AI Tracking Active</span>
+              </div>
+            )}
+
+            {/* Local PiP */}
+            {mode === 'call' && (
+              <motion.div drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
+                style={{ position: 'absolute', top: '1rem', right: '1rem', width: 176, aspectRatio: '3/4', background: '#1a1528', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(196,181,253,0.3)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', cursor: 'move', zIndex: 20 }}
+                whileHover={{ borderColor: 'rgba(167,139,250,0.6)' }}>
+                <video ref={el => { videoRef.current = el; if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream(); }} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: '0.6rem', left: '0.6rem', right: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: '6px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 500, color: '#fff' }}>{userName || 'You'}</div>
+                  {isMuted && <div style={{ background: 'rgba(239,68,68,0.8)', borderRadius: '50%', padding: '4px', display: 'flex' }}><VolumeX style={{ width: 10, height: 10, color: '#fff' }} /></div>}
                 </div>
               </motion.div>
             )}
 
-            {/* Real-time Translation Overlay */}
+            {/* Translation overlay */}
             <AnimatePresence>
               {(sentence.length > 0 || translatedText) && isAslActive && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                  className="absolute bottom-28 max-w-4xl w-[90%] bg-black/50 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden z-20"
-                >
-                  {/* Shimmer effect */}
-                  <motion.div animate={{ backgroundPosition: ['200% 0', '-200% 0'] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }} className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.3), transparent)', backgroundSize: '200% 100%' }} />
-                  
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="p-1.5 bg-indigo-500/20 rounded-lg"><MessageSquare className="w-4 h-4 text-indigo-400" /></div>
-                      <span className="text-xs font-bold text-indigo-300 tracking-wider uppercase flex items-center gap-2">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                  style={{ position: 'absolute', bottom: '5.5rem', width: 'calc(100% - 3rem)', maxWidth: 760, background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(24px)', border: '1px solid rgba(196,181,253,0.25)', borderRadius: '20px', padding: '1.25rem 1.5rem', overflow: 'hidden', zIndex: 20 }}>
+                  <motion.div animate={{ backgroundPosition: ['200% 0', '-200% 0'] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                    style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none', background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.5), transparent)', backgroundSize: '200% 100%' }} />
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                      <div style={{ padding: '0.3rem', background: 'rgba(124,58,237,0.2)', borderRadius: '8px' }}><MessageSquare style={{ width: 13, height: 13, color: '#a78bfa' }} /></div>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {mode === 'call' && remotePeers.size > 0 ? `${peerName || 'PARTNER'} TRANSLATING FROM ISL` : 'TRANSLATING FROM ISL'}
                         {isTranslating && (
-                          <span className="flex gap-1">
-                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
-                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
-                            <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} className="w-1 h-1 bg-indigo-400 rounded-full"/>
+                          <span style={{ display: 'flex', gap: 3 }}>
+                            {[0, 0.2, 0.4].map((d, i) => <motion.span key={i} animate={{ y: [0,-4,0] }} transition={{ duration: 0.6, repeat: Infinity, delay: d }} style={{ width: 4, height: 4, borderRadius: '50%', background: '#a78bfa', display: 'inline-block' }} />)}
                           </span>
                         )}
                       </span>
                     </div>
-                    
-                    <p className="text-3xl md:text-4xl font-medium leading-tight tracking-tight text-white drop-shadow-lg font-serif">
-                      "{getDisplayText() || getText()}"
-                    </p>
-
-                    {/* Suggestions */}
+                    <p style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.5rem)', fontWeight: 500, color: '#fff', lineHeight: 1.25, fontFamily: "'Playfair Display', Georgia, serif" }}>"{getDisplayText() || getText()}"</p>
                     {suggestions.length > 0 && (
-                      <div className="flex gap-2 mt-4 overflow-x-auto pb-2 no-scrollbar">
-                        {suggestions.map((s, i) => (
-                          <button key={i} onClick={() => applySuggestion(s)} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm hover:bg-white/10 transition-colors whitespace-nowrap">
-                            {s}
-                          </button>
-                        ))}
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', overflowX: 'auto', paddingBottom: '2px' }}>
+                        {suggestions.map((s, i) => <button key={i} onClick={() => applySuggestion(s)} style={{ padding: '0.35rem 0.9rem', borderRadius: '9999px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', fontSize: '0.8rem', color: '#e2e8f0', cursor: 'pointer', whiteSpace: 'nowrap' }}>{s}</button>)}
                       </div>
                     )}
                   </div>
@@ -922,189 +866,161 @@ export default function Translator() {
               )}
             </AnimatePresence>
 
-            {/* Floating Control Bar */}
-            <div className="absolute bottom-6 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl z-30">
-
-              {/* ── CALL-ONLY controls ── */}
+            {/* Floating control bar */}
+            <div style={{ position: 'absolute', bottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '9999px', padding: '0.5rem 1rem', zIndex: 30 }}>
               {mode === 'call' && (
                 <>
-                  <button
-                    onClick={handleMicToggle}
-                    className={`p-3 rounded-full transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
-                    title={isMuted ? 'Unmute mic' : 'Mute mic'}
-                  >
-                    {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                  </button>
-                  <button
-                    onClick={handleScreenShare}
-                    className={`p-3 rounded-full transition-colors ${isScreenSharing ? 'bg-blue-500/30 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.4)]' : 'bg-white/10 hover:bg-white/20'}`}
-                    title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
-                  >
-                    {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-                  </button>
-                  {/* Share / Invite button — reopens the meeting link + QR modal */}
+                  <CtrlBtn active={isMuted} activeColor="rgba(239,68,68,0.25)" activeIconColor="#f87171" title={isMuted ? 'Unmute mic' : 'Mute mic'} onClick={handleMicToggle}>
+                    {isMuted ? <MicOff style={{ width: 18, height: 18 }} /> : <Mic style={{ width: 18, height: 18 }} />}
+                  </CtrlBtn>
+                  <CtrlBtn active={isScreenSharing} activeColor="rgba(59,130,246,0.25)" activeIconColor="#60a5fa" title={isScreenSharing ? 'Stop sharing' : 'Share screen'} onClick={handleScreenShare}>
+                    {isScreenSharing ? <MonitorOff style={{ width: 18, height: 18 }} /> : <Monitor style={{ width: 18, height: 18 }} />}
+                  </CtrlBtn>
                   {inRoom && (
-                    <button
-                      onClick={() => setShowMeetingModal(true)}
-                      className="p-3 rounded-full transition-all bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 hover:text-indigo-100 shadow-[0_0_10px_rgba(99,102,241,0.2)] hover:shadow-[0_0_16px_rgba(99,102,241,0.4)]"
-                      title="Share meeting link / QR code"
-                    >
-                      <Link2 className="w-5 h-5" />
-                    </button>
+                    <CtrlBtn title="Share meeting link" onClick={() => setShowMeetingModal(true)}>
+                      <Link2 style={{ width: 18, height: 18 }} />
+                    </CtrlBtn>
                   )}
-                  <div className="w-px h-8 bg-white/10" />
+                  <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.18)' }} />
                 </>
               )}
-
-              {/* ── SHARED controls (both solo & call) ── */}
-              <button
-                onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}
-                className={`p-3 rounded-full transition-colors ${!isVideoOn ? 'bg-red-500/20 text-red-400' : 'bg-white/10 hover:bg-white/20'}`}
-                title="Toggle camera"
-              >
-                {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={() => setIsAslActive(!isAslActive)}
-                className={`p-3 rounded-full transition-colors ${isAslActive ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white/10 hover:bg-white/20'}`}
-                title="Toggle AI detection"
-              >
-                <Sparkles className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className={`p-3 rounded-full transition-colors ${isSidebarOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'}`}
-                title={mode === 'call' ? 'Chat' : 'Transcript'}
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
-
-              {/* ── CALL-ONLY: End call ── */}
+              <CtrlBtn active={!isVideoOn} activeColor="rgba(239,68,68,0.25)" activeIconColor="#f87171" title="Toggle camera" onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}>
+                {isVideoOn ? <Video style={{ width: 18, height: 18 }} /> : <VideoOff style={{ width: 18, height: 18 }} />}
+              </CtrlBtn>
+              <motion.button onClick={() => setIsAslActive(!isAslActive)} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }} title="Toggle AI detection"
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isAslActive ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,0.1)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isAslActive ? '0 0 20px rgba(124,58,237,0.55)' : 'none', transition: 'all 0.25s' }}>
+                <Sparkles style={{ width: 18, height: 18 }} />
+              </motion.button>
+              <CtrlBtn active={isSidebarOpen} activeColor="rgba(255,255,255,0.2)" title="Transcript / Chat" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <MessageSquare style={{ width: 18, height: 18 }} />
+              </CtrlBtn>
               {mode === 'call' && (
                 <>
-                  <div className="w-px h-8 bg-white/10" />
-                  <button
-                    onClick={handleLeaveRoom}
-                    className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
-                    title="Leave call"
-                  >
-                    <PhoneOff className="w-4 h-4" /> Leave
-                  </button>
+                  <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.18)' }} />
+                  <motion.button onClick={handleLeaveRoom} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.1rem', borderRadius: '9999px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>
+                    <PhoneOff style={{ width: 14, height: 14 }} /> Leave
+                  </motion.button>
                 </>
               )}
             </div>
 
-            {/* Screen-share badge */}
+            {/* Screen share banner */}
             {isScreenSharing && (
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-blue-500/20 backdrop-blur-md border border-blue-500/30 px-4 py-2 rounded-xl flex items-center gap-2 z-30">
-                <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-blue-400" />
-                <span className="text-xs font-medium text-blue-300">Sharing Screen</span>
-                <button onClick={handleScreenShare} className="ml-2 text-xs text-blue-400 hover:text-white underline">Stop</button>
+              <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'rgba(59,130,246,0.18)', backdropFilter: 'blur(12px)', border: '1px solid rgba(96,165,250,0.35)', borderRadius: '12px', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 30 }}>
+                <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: 7, height: 7, borderRadius: '50%', background: '#60a5fa' }} />
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#93c5fd' }}>Sharing Screen</span>
+                <button onClick={handleScreenShare} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.72rem', textDecoration: 'underline' }}>Stop</button>
               </div>
             )}
-
           </div>
 
-          {/* RIGHT SIDEBAR */}
+          {/* SIDEBAR */}
           <AnimatePresence>
             {isSidebarOpen && (
-              <motion.div 
-                initial={{ width: 0, opacity: 0 }} animate={{ width: 380, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
-                className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col overflow-hidden shrink-0 z-20"
-              >
-                {/* Tabs */}
-                <div className="flex p-2 bg-black/20">
-                  <button onClick={() => setSidebarTab('transcript')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all ${sidebarTab === 'transcript' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>Transcript</button>
-                  {mode === 'call' && (
-                    <button onClick={() => setSidebarTab('chat')} className={`flex-1 py-2 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${sidebarTab === 'chat' ? 'bg-white/10 shadow-sm' : 'text-gray-400 hover:text-white'}`}>
-                      Chat
-                    </button>
-                  )}
+              <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 340, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                style={{ background: GLASS, backdropFilter: 'blur(24px)', border: GLASS_B, borderRadius: '22px', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, zIndex: 20, boxShadow: '0 12px 48px rgba(124,58,237,0.08)' }}>
+                <div style={{ display: 'flex', padding: '0.5rem', background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(196,181,253,0.18)', gap: '0.25rem' }}>
+                  <TabBtn active={sidebarTab === 'transcript'} onClick={() => setSidebarTab('transcript')}>Transcript</TabBtn>
+                  {mode === 'call' && <TabBtn active={sidebarTab === 'chat'} onClick={() => setSidebarTab('chat')}>Chat</TabBtn>}
                 </div>
-
-                {/* Content area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                  {/* Confidence Monitor */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-                     <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
-                     <div>
-                       <p className="text-lg font-bold">{prediction?.hand_detected ? prediction.sign : '—'}</p>
-                       <p className="text-xs text-gray-400">{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand'}</p>
-                     </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.88)', border: '1.5px solid rgba(196,181,253,0.22)', borderRadius: '18px', padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 2px 12px rgba(124,58,237,0.06)' }}>
+                    <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
+                    <div>
+                      <p style={{ fontSize: '1.05rem', fontWeight: 700, color: TEXT, marginBottom: '0.15rem' }}>{prediction?.hand_detected ? prediction.sign : '—'}</p>
+                      <p style={{ fontSize: '0.72rem', color: FAINT }}>{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand detected'}</p>
+                    </div>
                   </div>
-
-                  <h3 className="text-sm font-semibold text-gray-300">Conversation</h3>
-
-                  {/* Chat History */ }
+                  <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a78bfa' }}>Conversation</p>
                   {chatMessages.map(msg => (
-                     <div key={msg.id} className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${msg.sender === 'Me' ? 'bg-indigo-600' : 'bg-gray-600'}`}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
-                        <span className="text-sm font-medium">{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
-                        <span className="text-xs text-gray-500">{msg.time}</span>
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: msg.sender === 'Me' ? ACCENT : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
+                        <span style={{ fontSize: '0.66rem', color: FAINT }}>{msg.time}</span>
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed">
-                        {msg.text}
-                      </p>
+                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6 }}>{msg.text}</p>
                     </div>
                   ))}
-
-                  {/* Real-time translated text appending */}
                   {(translatedText || getText()) && (
-                     <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-indigo-600/50">Me</div>
-                        <span className="text-sm font-medium">{userName || 'You'}</span>
-                        <span className="text-xs text-gray-500">Now</span>
-                        {isAslActive && <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded">ASL</span>}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(124,58,237,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff' }}>Me</div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{userName || 'You'}</span>
+                        <span style={{ fontSize: '0.66rem', color: FAINT }}>Now</span>
+                        {isAslActive && <span style={{ fontSize: '0.6rem', fontWeight: 700, background: 'rgba(124,58,237,0.08)', color: ACCENT, border: '1px solid rgba(124,58,237,0.22)', borderRadius: '5px', padding: '1px 6px' }}>ASL</span>}
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
-                        {getDisplayText() || getText()}
-                      </p>
+                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>{getDisplayText() || getText()}</p>
                     </div>
                   )}
-
                   {mode === 'call' && peerSentence && (
-                     <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-gray-600">{peerName ? peerName[0] : 'P'}</div>
-                        <span className="text-sm font-medium">{peerName || 'Partner'}</span>
-                        <span className="text-xs text-gray-500">Now</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff' }}>{peerName ? peerName[0] : 'P'}</div>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{peerName || 'Partner'}</span>
+                        <span style={{ fontSize: '0.66rem', color: FAINT }}>Now</span>
                       </div>
-                      <p className="text-sm text-gray-300 pl-8 leading-relaxed italic opacity-80">
-                        {peerSentence}
-                      </p>
+                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>{peerSentence}</p>
                     </div>
                   )}
-
+                  {(sentence.length > 0 || translatedText) && (
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                      {[
+                        { icon: Copy,    label: 'Copy',  action: handleCopy  },
+                        { icon: Save,    label: 'Save',  action: handleSave  },
+                        { icon: isSpeaking ? VolumeX : Volume2, label: isSpeaking ? 'Stop' : 'Speak', action: handleSpeak },
+                        { icon: RotateCcw, label: 'Reset', action: handleReset },
+                      ].map(({ icon: Icon, label, action }) => (
+                        <motion.button key={label} onClick={action} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', borderRadius: '9999px', background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.18)', color: ACCENT, fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+                          <Icon style={{ width: 12, height: 12 }} /> {label}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {/* Input area */}
                 {mode === 'call' && (
-                  <div className="p-4 bg-black/20 border-t border-white/5">
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                        placeholder="Type to speak or chat..." 
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-indigo-500" 
-                      />
-                      <button onClick={handleSendChat} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center hover:bg-indigo-500 transition-colors">
-                        <Send className="w-4 h-4" />
+                  <div style={{ padding: '0.85rem', borderTop: '1px solid rgba(196,181,253,0.18)', background: 'rgba(255,255,255,0.5)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} placeholder="Type to speak or chat…"
+                        style={{ width: '100%', background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', paddingLeft: '1rem', paddingRight: '3rem', paddingTop: '0.7rem', paddingBottom: '0.7rem', fontSize: '0.84rem', color: TEXT, outline: 'none', boxSizing: 'border-box' }} />
+                      <button onClick={handleSendChat} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg,#7c3aed,#a855f7)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Send style={{ width: 14, height: 14, color: '#fff' }} />
                       </button>
                     </div>
-                    <p className="text-[10px] text-gray-500 text-center mt-2 font-mono">Press Enter to send</p>
+                    <p style={{ fontSize: '0.62rem', color: FAINT, textAlign: 'center', marginTop: '0.4rem', fontFamily: 'monospace' }}>Press Enter to send</p>
                   </div>
                 )}
-
               </motion.div>
             )}
           </AnimatePresence>
 
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.22); border-radius: 9999px; }
+      `}</style>
     </div>
+  );
+}
+
+function CtrlBtn({ children, onClick, title, active = false, activeColor = 'rgba(255,255,255,0.2)', activeIconColor }) {
+  return (
+    <motion.button onClick={onClick} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }} title={title}
+      style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer', background: active ? activeColor : 'rgba(255,255,255,0.08)', color: active && activeIconColor ? activeIconColor : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.18s, color 0.18s' }}>
+      {children}
+    </motion.button>
+  );
+}
+
+function TabBtn({ children, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ flex: 1, padding: '0.45rem 0.75rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, background: active ? 'rgba(124,58,237,0.12)' : 'transparent', color: active ? '#7c3aed' : '#94a3b8', transition: 'all 0.18s' }}>
+      {children}
+    </button>
   );
 }
