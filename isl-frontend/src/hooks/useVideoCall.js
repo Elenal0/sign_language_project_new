@@ -445,7 +445,7 @@ export function useVideoCall() {
     ws.send(JSON.stringify({ type: "chat", peer_id: myIdRef.current, name: myNameRef.current, text }));
   }, []);
 
-  useEffect(() => cleanup, [cleanup]);
+  useEffect(() => () => cleanup(), [cleanup]);
 
   return {
     status,

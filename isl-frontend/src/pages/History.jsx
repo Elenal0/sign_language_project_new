@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Download, Bookmark, Trash2, Clock, CheckCircle2, History as HistoryIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Search, Download, Bookmark, Trash2, ArrowRight, History as HistoryIcon } from 'lucide-react'
+import PageHeader from '../components/ui/PageHeader'
+import Segmented from '../components/ui/Segmented'
 import { useApp } from '../context/AppContext'
 
 function relTime(iso) {
@@ -81,167 +84,155 @@ export default function History() {
     }
   }
 
-  return (
-    <div style={{ padding: '1.5rem', minHeight: '100%' }}>
-      
-      {/* Header */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Translation History</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Review and manage your past translations.</p>
-        </div>
+  const savedCount = history.filter(h => h.saved).length
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button 
-            onClick={handleClear} 
-            disabled={!history.length}
-            className="btn-secondary" 
-            style={{ 
-              color: confirmClear ? '#fff' : 'var(--red)', 
-              borderColor: confirmClear ? 'var(--red)' : 'var(--red-border)', 
-              background: confirmClear ? 'var(--red)' : 'var(--red-soft)' 
-            }}
-          >
-            <Trash2 size={14} /> {confirmClear ? 'Click to Confirm' : 'Clear All'}
-          </button>
-          
-          <button onClick={exportCSV} disabled={!history.length} className="btn-primary">
-            <Download size={14} /> Export CSV
-          </button>
-        </div>
-      </div>
+  return (
+    <div className="page">
+
+      <PageHeader
+        eyebrow={`Archive · ${history.length} ${history.length === 1 ? 'translation' : 'translations'}`}
+        title={<>Every <em>conversation</em></>}
+        deva="इतिहास"
+        sub="Sentences you saved from the translator, newest first. Bookmark the ones worth keeping."
+        actions={
+          <>
+            <button
+              onClick={handleClear}
+              disabled={!history.length}
+              className={confirmClear ? 'btn-primary' : 'btn-ghost'}
+              style={confirmClear ? { background: 'var(--red)', color: '#fff', boxShadow: 'none' } : { color: history.length ? 'var(--red)' : 'var(--text-ghost)' }}
+            >
+              <Trash2 size={15} /> {confirmClear ? 'Click to confirm' : 'Clear all'}
+            </button>
+            <button onClick={exportCSV} disabled={!history.length} className="btn-secondary">
+              <Download size={15} /> Export CSV
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
-      <div className="card" style={{ padding: '12px 16px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Search translations..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ paddingLeft: 34, paddingRight: 12, height: 36, background: 'var(--bg-inset)' }}
+      {history.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 28 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 420 }}>
+            <Search size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Search your sentences"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 38 }}
+            />
+          </div>
+          <Segmented
+            ariaLabel="Filter"
+            value={filter}
+            onChange={setFilter}
+            options={[{ value: 'all', label: `All  ${history.length}` }, { value: 'saved', label: `Saved  ${savedCount}` }]}
           />
         </div>
+      )}
 
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-inset)', padding: 4, borderRadius: 8, border: '1px solid var(--border)' }}>
-          {['all', 'saved'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{
-                padding: '4px 12px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
-                textTransform: 'capitalize', cursor: 'pointer', border: 'none',
-                background: filter === f ? 'var(--bg-elevated)' : 'transparent',
-                color: filter === f ? 'var(--text-primary)' : 'var(--text-muted)',
-                boxShadow: filter === f ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {f}
-            </button>
-          ))}
+      {history.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '5rem 1rem' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-panel)', border: '1px solid var(--border)' }}>
+            <HistoryIcon size={22} strokeWidth={1.5} style={{ color: 'var(--text-faint)' }} />
+          </div>
+          <p className="display" style={{ fontSize: '2.4rem', marginTop: 22 }}>Nothing here <em>yet.</em></p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 10 }}>Sign a sentence in the translator and press Save — it will appear here.</p>
+          <Link to="/translate" className="btn-primary" style={{ marginTop: 24 }}>Open translator <ArrowRight size={15} /></Link>
         </div>
-      </div>
-
-      {/* List */}
-      <div>
-        {history.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
-            <HistoryIcon size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No history yet</p>
-            <p style={{ fontSize: '0.85rem', marginTop: 4 }}>Translations will automatically save here.</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-muted)' }}>
-            <p style={{ fontSize: '0.9rem' }}>No matches found for your search.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {['Today', 'Yesterday', 'Earlier'].map(group => {
-              const items = grouped[group]
-              if (!items.length) return null
-              return (
-                <div key={group}>
-                  <p className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={12} /> {group}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <AnimatePresence>
-                      {items.map(item => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, scale: 0.98, height: 0 }}
-                          animate={{ opacity: 1, scale: 1, height: 'auto' }}
-                          exit={{ opacity: 0, scale: 0.95, height: 0, marginBottom: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div
-                            className="card-hover"
-                            style={{ 
-                              padding: '12px 16px', 
-                              borderLeft: item.saved ? '3px solid var(--accent)' : '1px solid var(--border)',
-                              display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between'
-                            }}
-                          >
-                            <div>
-                              <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                                {item.sentence}
-                              </p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                <span className="badge" style={{ background: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
-                                  {item.lang.toUpperCase()}
-                                </span>
-                                <span className="badge" style={{ background: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
-                                  {item.words.length} words
-                                </span>
-                                <span className="badge" style={{ background: 'transparent', color: confColor(item.confidence) }}>
-                                  <CheckCircle2 size={10} style={{ marginRight: 2 }}/>
-                                  {Math.round(item.confidence * 100)}% conf
-                                </span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-ghost)', marginLeft: 4 }}>
-                                  {relTime(item.timestamp)}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button
-                                onClick={() => toggleSaved(item.id)}
-                                style={{
-                                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  cursor: 'pointer', border: '1px solid transparent',
-                                  background: item.saved ? 'var(--accent-soft)' : 'var(--bg-inset)',
-                                  color: item.saved ? 'var(--accent)' : 'var(--text-muted)',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <Bookmark size={14} fill={item.saved ? 'currentColor' : 'none'} />
-                              </button>
-                              <button
-                                onClick={() => deleteItem(item.id)}
-                                style={{
-                                  width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  cursor: 'pointer', border: '1px solid transparent',
-                                  background: 'var(--red-soft)', color: 'var(--red)',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+          <p className="display" style={{ fontSize: '2rem' }}>No matches.</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
+            {filter === 'saved' && !search ? 'You haven’t bookmarked anything yet.' : 'Try a different word.'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+          {['Today', 'Yesterday', 'Earlier'].map(group => {
+            const items = grouped[group]
+            if (!items.length) return null
+            return (
+              <section key={group} className="hist-group reveal">
+                <div className="hist-label">
+                  <span className="eyebrow eyebrow--plain">{group}</span>
+                  <span className="mono" style={{ fontSize: '0.66rem', color: 'var(--text-ghost)' }}>{String(items.length).padStart(2, '0')}</span>
+                </div>
+                <div>
+                  <AnimatePresence initial={false}>
+                    {items.map(item => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, height: 0, transition: { duration: 0.25 } }}
+                        transition={{ duration: 0.3 }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div className="hist-row">
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p className={/[ऀ-ॿ]/.test(item.sentence) ? 'deva' : ''}
+                              style={{ fontFamily: /[ऀ-ॿ]/.test(item.sentence) ? undefined : 'var(--font-serif)', fontSize: '1.55rem', lineHeight: 1.2, color: 'var(--text-primary)' }}>
+                              {item.sentence}
+                            </p>
+                            <div className="mono" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 10, fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                              <span>{item.lang.toUpperCase()}</span>
+                              <span>{item.words.length} {item.words.length === 1 ? 'word' : 'words'}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: confColor(item.confidence) }} />
+                                {Math.round(item.confidence * 100)}% confidence
+                              </span>
+                              <span>{relTime(item.timestamp)}</span>
                             </div>
                           </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
+
+                          <div className="hist-actions" data-saved={item.saved}>
+                            <button
+                              onClick={() => toggleSaved(item.id)}
+                              className="icon-btn"
+                              aria-label={item.saved ? 'Remove bookmark' : 'Bookmark'}
+                              aria-pressed={item.saved}
+                              style={item.saved ? { color: 'var(--accent)' } : undefined}
+                            >
+                              <Bookmark size={16} fill={item.saved ? 'currentColor' : 'none'} />
+                            </button>
+                            <button onClick={() => deleteItem(item.id)} className="icon-btn hist-delete" aria-label="Delete">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              </section>
+            )
+          })}
+        </div>
+      )}
+
+      <style>{`
+        .hist-group { display: grid; grid-template-columns: 140px 1fr; gap: 24px; }
+        .hist-label { display: flex; flex-direction: column; gap: 6px; padding-top: 22px; position: sticky; top: 16px; align-self: start; }
+        .hist-row { transition: background-color var(--dur-sm) ease, padding var(--dur-md) var(--ease-out);
+          display: flex; align-items: center; gap: 16px; padding: 20px 4px;
+          border-top: 1px solid var(--border);
+        }
+        .hist-actions { display: flex; gap: 2px; opacity: 0; translate: 6px 0; transition: opacity var(--dur-sm) ease, translate var(--dur-md) var(--ease-out); }
+        .hist-row:hover { background: linear-gradient(90deg, var(--accent-softer), transparent 70%); }
+        .hist-row:hover .hist-actions, .hist-actions:focus-within, .hist-actions[data-saved="true"] { translate: 0 0; }
+        .hist-row:hover .hist-actions, .hist-actions:focus-within, .hist-actions[data-saved="true"] { opacity: 1; }
+        .hist-delete:hover { color: var(--red) !important; background: var(--red-soft) !important; }
+        @media (hover: none) { .hist-actions { opacity: 1; } }
+        @media (max-width: 720px) {
+          .hist-group { grid-template-columns: 1fr; gap: 4px; }
+          .hist-label { position: static; flex-direction: row; justify-content: space-between; padding-top: 0; }
+        }
+      `}</style>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import os
 import base64
 import time
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import cv2
@@ -30,10 +31,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("sanketsetu")
 
 # ── App ───────────────────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_models()
+    yield
+
+
 app = FastAPI(
     title="SanketSetu API",
     description="Indian Sign Language Translation — ML Backend",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 ALLOWED_ORIGINS = os.getenv(
@@ -41,8 +49,7 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174,"
     "http://localhost:5175,http://127.0.0.1:5175,"
-    "https://drishya-vaani.vercel.app,"
-    "https://sign-language-backend-4uar.onrender.com"
+    "https://drishya-vaani.vercel.app"
 ).split(",")
 API_KEY_SECRET = os.getenv("API_KEY_SECRET", "dev-secret-key")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -69,8 +76,7 @@ model = None
 label_encoder = None
 extractor = None
 
-@app.on_event("startup")
-async def load_models():
+def load_models():
     global model, label_encoder, extractor
 
     model_path = MODELS_DIR / "sign_language_model.pkl"

@@ -15,11 +15,14 @@ import {
   AlertCircle, Wifi, WifiOff, Lightbulb,
   Phone, PhoneOff, Users, User, Link2, Loader2, UserCheck,
   Sparkles, Zap, MessageSquare, CheckCircle2, Send, Settings, Monitor, MonitorOff, Mic, MicOff, Maximize2, Minimize2,
+  Lock, Shuffle, PanelRight, ArrowUpRight,
 } from 'lucide-react';
 import { useWebcam }           from '../hooks/useWebcam';
 import { useVideoCall }         from '../hooks/useVideoCall';
 import { useApp }               from '../context/AppContext';
 import MeetingReadyModal        from '../components/MeetingReadyModal';
+import Segmented                from '../components/ui/Segmented';
+import HandLandmarks            from '../components/ui/HandLandmarks';
 
 const MIN_CONFIDENCE = 0.60;
 
@@ -162,32 +165,29 @@ function ConfidenceRing({ pct, sign, hasHand }) {
     offset.set(CIRC - (CIRC * pct) / 100);
   }, [pct]);
 
+  const color = hasHand ? confColor(pct) : 'var(--text-ghost)';
+
   return (
-    <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
-      {/* Glow pulse when high confidence */}
+    <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
       {hasHand && pct >= 90 && (
         <motion.div
-          animate={{ scale: [1, 1.6, 1], opacity: [0.4, 0, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          style={{
-            position: 'absolute', inset: 0, borderRadius: '50%',
-            background: 'var(--green-soft)', pointerEvents: 'none',
-          }}
+          animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 1.6, repeat: Infinity }}
+          style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid var(--green)', pointerEvents: 'none' }}
         />
       )}
-      <svg width={72} height={72} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={36} cy={36} r={RADIUS} fill="none" stroke="var(--border)" strokeWidth={5} />
+      <svg width={64} height={64} viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={36} cy={36} r={RADIUS} fill="none" stroke="var(--border-hover)" strokeWidth={4} />
         <motion.circle
           cx={36} cy={36} r={RADIUS} fill="none"
-          stroke={hasHand ? confColor(pct) : 'var(--text-ghost)'}
-          strokeWidth={5} strokeLinecap="round"
+          stroke={color} strokeWidth={4} strokeLinecap="round"
           strokeDasharray={CIRC}
-          style={{ strokeDashoffset: offset }}
+          style={{ strokeDashoffset: offset, transition: 'stroke 0.3s ease' }}
         />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: hasHand ? confColor(pct) : 'var(--text-ghost)' }}>
-          {pct}%
+        <span className="mono" style={{ fontSize: '0.78rem', fontWeight: 500, color: hasHand ? 'var(--text-primary)' : 'var(--text-ghost)' }}>
+          {pct}<span style={{ fontSize: '0.6rem', color: 'var(--text-faint)' }}>%</span>
         </span>
       </div>
     </div>
@@ -199,12 +199,12 @@ function WordChip({ word, index, color = 'accent' }) {
   return (
     <motion.span
       key={`${word}-${index}`}
-      initial={{ opacity: 0, scale: 0.5, y: 8 }}
+      initial={{ opacity: 0, scale: 0.6, y: 6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 22 }}
       style={{
-        padding: '3px 10px', borderRadius: 6,
-        fontSize: '0.85rem', fontWeight: 600,
+        display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 11px', borderRadius: 9,
+        fontSize: '0.84rem', fontWeight: 500,
         background: color === 'accent' ? 'var(--accent-soft)' : 'var(--blue-soft)',
         border: `1px solid ${color === 'accent' ? 'var(--accent-border)' : 'var(--blue-border)'}`,
         color: color === 'accent' ? 'var(--accent)' : 'var(--blue)',
@@ -227,38 +227,19 @@ function IncomingSuggestionBanner({ text, onDismiss }) {
     <AnimatePresence>
       {text && (
         <motion.div
-          initial={{ opacity: 0, y: -16, scale: 0.95 }}
+          initial={{ opacity: 0, y: -12, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -12, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-          style={{
-            background: 'linear-gradient(135deg, var(--blue-soft), var(--accent-softer))',
-            border: '1px solid var(--blue-border)',
-            borderRadius: 14, padding: '14px 18px',
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-          }}
+          exit={{ opacity: 0, y: -8, scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+          className="card"
+          style={{ display: 'flex', alignItems: 'flex-start', gap: 12, borderColor: 'var(--blue-border)' }}
         >
-          {/* Animated icon */}
-          <motion.div
-            animate={{ rotate: [0, -10, 10, -5, 5, 0] }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            style={{
-              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: 'var(--blue-soft)', border: '1px solid var(--blue-border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <MessageSquare size={16} style={{ color: 'var(--blue)' }} />
-          </motion.div>
+          <MessageSquare size={16} style={{ color: 'var(--blue)', marginTop: 3, flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-              Partner wants to say
-            </p>
-            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-              "{text}"
-            </p>
+            <p className="section-label" style={{ marginBottom: 6, color: 'var(--blue)' }}>Partner wants to say</p>
+            <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', lineHeight: 1.2 }}>“{text}”</p>
           </div>
-          <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, marginTop: 2, fontSize: 16, lineHeight: 1 }}>×</button>
+          <button onClick={onDismiss} className="icon-btn" style={{ width: 26, height: 26 }} aria-label="Dismiss">×</button>
         </motion.div>
       )}
     </AnimatePresence>
@@ -279,36 +260,30 @@ function VideoTile({ stream, name, isPinned, onPin }) {
   return (
     <div
       onClick={onPin}
-      className={`relative w-full h-full min-h-0 rounded-2xl overflow-hidden bg-gray-900/80 cursor-pointer border-2 transition-all duration-200 ${
-        isPinned
-          ? 'border-indigo-500 shadow-[0_0_24px_rgba(99,102,241,0.5)]'
-          : 'border-white/10 hover:border-white/30'
-      }`}
-      title={isPinned ? 'Click to unpin' : 'Click to pin fullscreen'}
+      title={isPinned ? 'Click to unpin' : 'Click to pin'}
+      style={{
+        position: 'relative', width: '100%', height: '100%', minHeight: 0, overflow: 'hidden', cursor: 'pointer',
+        borderRadius: 18, background: '#161513',
+        border: `1px solid ${isPinned ? '#FF8A4C' : 'var(--stage-border)'}`,
+        boxShadow: isPinned ? '0 0 0 3px rgba(255,138,76,0.18)' : 'none',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+      }}
     >
-      <video
-        ref={ref}
-        autoPlay
-        playsInline
-        muted={false}
-        className="w-full h-full object-cover"
-      />
-      {/* Placeholder avatar when stream not yet flowing */}
+      <video ref={ref} autoPlay playsInline muted={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       {!stream && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-500">
-          <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold text-gray-300">
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--stage-muted)' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--stage-raised)', border: '1px solid var(--stage-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--stage-text)' }}>
             {name?.[0]?.toUpperCase() || '?'}
           </div>
-          <span className="text-xs">Connecting…</span>
+          <span style={{ fontSize: '0.74rem' }}>Connecting…</span>
         </div>
       )}
-      {/* Name label */}
-      <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium pointer-events-none">
+      <div className="stage-chip" style={{ position: 'absolute', bottom: 12, left: 12, pointerEvents: 'none' }}>
         {name || 'Partner'}
       </div>
       {isPinned && (
-        <div className="absolute top-3 right-3 bg-indigo-500/80 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-semibold pointer-events-none">
-          Pinned
+        <div className="stage-chip mono" style={{ position: 'absolute', top: 12, right: 12, pointerEvents: 'none', fontSize: '0.62rem', letterSpacing: '0.1em', color: '#FF8A4C' }}>
+          PINNED
         </div>
       )}
     </div>
@@ -324,32 +299,19 @@ function VideoGrid({ remotePeers, pinnedPeerId, onPinToggle }) {
 
   if (peerList.length === 0) return null;
 
-  // ── Featured + strip layout when a tile is pinned ──────────────────────────
   if (pinnedPeerId && remotePeers.has(pinnedPeerId)) {
     const pinned = remotePeers.get(pinnedPeerId);
     const others = peerList.filter(([id]) => id !== pinnedPeerId);
     return (
-      <div className="absolute inset-0 flex gap-3">
-        {/* Pinned tile — takes the bulk of the space */}
-        <div className="flex-1 min-w-0">
-          <VideoTile
-            stream={pinned.stream}
-            name={pinned.name || 'Partner'}
-            isPinned
-            onPin={() => onPinToggle(null)}
-          />
+      <div style={{ position: 'absolute', inset: 10, display: 'flex', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <VideoTile stream={pinned.stream} name={pinned.name || 'Partner'} isPinned onPin={() => onPinToggle(null)} />
         </div>
-        {/* Side strip — other remote peers */}
         {others.length > 0 && (
-          <div className="flex flex-col gap-3 w-48 shrink-0">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 200, flexShrink: 0 }}>
             {others.map(([id, peer]) => (
-              <div key={id} className="flex-1 min-h-0">
-                <VideoTile
-                  stream={peer.stream}
-                  name={peer.name || 'Partner'}
-                  isPinned={false}
-                  onPin={() => onPinToggle(id)}
-                />
+              <div key={id} style={{ flex: 1, minHeight: 0 }}>
+                <VideoTile stream={peer.stream} name={peer.name || 'Partner'} isPinned={false} onPin={() => onPinToggle(id)} />
               </div>
             ))}
           </div>
@@ -358,28 +320,14 @@ function VideoGrid({ remotePeers, pinnedPeerId, onPinToggle }) {
     );
   }
 
-  // ── Equal grid — no pin ────────────────────────────────────────────────────
   // Column count: 1 → 1 col, 2 → 2 cols, 3-4 → 2 cols, 5 → 3 cols
   const count = peerList.length;
   const cols  = count <= 1 ? 1 : count <= 4 ? 2 : 3;
 
   return (
-    <div
-      className="absolute inset-0"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gap: '12px',
-      }}
-    >
+    <div style={{ position: 'absolute', inset: count <= 1 ? 0 : 10, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
       {peerList.map(([id, peer]) => (
-        <VideoTile
-          key={id}
-          stream={peer.stream}
-          name={peer.name || 'Partner'}
-          isPinned={false}
-          onPin={() => onPinToggle(id)}
-        />
+        <VideoTile key={id} stream={peer.stream} name={peer.name || 'Partner'} isPinned={false} onPin={() => onPinToggle(id)} />
       ))}
     </div>
   );
@@ -417,6 +365,16 @@ export default function Translator() {
   const [currentTime, setCurrentTime] = useState('');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenStreamRef = useRef(null);
+
+  // Meeting links (/translate?room=CODE) pre-fill the room code in call mode
+  useEffect(() => {
+    const room = new URLSearchParams(window.location.search).get('room');
+    if (room) {
+      setMode('call');
+      setRoomInput(normalizeRoomCode(room));
+    }
+  }, []);
+
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})), 1000);
     return () => clearInterval(t);
@@ -513,7 +471,7 @@ export default function Translator() {
   };
 
   const handleSpeak = useCallback(() => {
-    const textToSpeak = getDisplayText();
+    const textToSpeak = translatedText || sentence.map(s => s.word).join(' ');
     if (!textToSpeak || isSpeaking) return;
     // Cancel any ongoing speech
     speechSynthesis.cancel();
@@ -539,6 +497,9 @@ export default function Translator() {
       speechSynthesis.onvoiceschanged = () => { doSpeak(); speechSynthesis.onvoiceschanged = null; };
     }
   }, [language, isSpeaking, translatedText, sentence, speechRate]);
+
+  // Stop any speech still playing when leaving the page
+  useEffect(() => () => speechSynthesis.cancel(), []);
 
   // Apply suggestion — and relay to partner in call mode
   const applySuggestion = (text) => {
@@ -581,7 +542,14 @@ export default function Translator() {
       const ok = await handleStart({ detect: false });
       if (!ok) return;
     }
-    await joinRoom(roomId, getStream(), userName);
+    // Joining without a stream creates peer connections with no tracks — wait up to 2s for it
+    let stream = getStream();
+    for (let i = 0; !stream && i < 20; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      stream = getStream();
+    }
+    if (!stream) return showToast('Camera not ready — try again', 'error');
+    await joinRoom(roomId, stream, userName);
     setInRoom(true);
   };
 
@@ -612,11 +580,12 @@ export default function Translator() {
 
   // ── Real mic mute: toggle the audio track on the live stream ─────────────────
   const handleMicToggle = useCallback(() => {
+    const nextMuted = !isMuted;
     const stream = getStream();
     if (stream) {
-      stream.getAudioTracks().forEach(t => { t.enabled = isMuted; }); // flip: muted=true means disable
+      stream.getAudioTracks().forEach(t => { t.enabled = !nextMuted; });
     }
-    setIsMuted(prev => !prev);
+    setIsMuted(nextMuted);
   }, [getStream, isMuted]);
 
   // ── Real screen share ─────────────────────────────────────────────────────────
@@ -669,357 +638,565 @@ export default function Translator() {
 
   useEffect(() => {
     // Use 4 fps in call mode — enough for smooth sign detection without spiking encode CPU
-    setDetectionFps(mode === 'call' ? 4 : 4);
+    setDetectionFps(4);
   }, [mode, setDetectionFps]);
 
-  useEffect(() => stop, [stop]);
+  useEffect(() => () => stop(), [stop]);
+
+  // Solo video and call-mode PiP are never mounted together; whichever is mounted
+  // is the frame-capture source, and gets the stream re-attached when it remounts.
+  const attachLocalVideo = useCallback((el) => {
+    videoRef.current = el;
+    const s = getStream();
+    if (el && s && el.srcObject !== s) el.srcObject = s;
+  }, [videoRef, getStream]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const pct  = prediction ? Math.round(prediction.confidence * 100) : 0;
   const meta = STATUS_META[callStatus] || STATUS_META.idle;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER — Light Theme (Drishya Vaani)
+  // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const PAGE_BG = 'linear-gradient(160deg, #faf8ff 0%, #eef2ff 45%, #fdf6ff 100%)';
-  const GLASS   = 'rgba(255,255,255,0.72)';
-  const GLASS_B = '1px solid rgba(196,181,253,0.28)';
-  const ACCENT  = '#7c3aed';
-  const TEXT    = '#1e1b4b';
-  const MUTED   = '#64748b';
-  const FAINT   = '#94a3b8';
+  const hasHand     = !!prediction?.hand_detected;
+  const holdPct     = Math.min(100, (holdCount / HOLD_FRAMES) * 100);
+  const displayText = getDisplayText() || getText();
+  const inCall      = mode === 'call';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: PAGE_BG, color: TEXT, overflow: 'hidden', position: 'relative', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="tr-root">
 
       {showMeetingModal && (
         <MeetingReadyModal roomCode={roomInput} onDismiss={() => setShowMeetingModal(false)} />
       )}
 
-      <div aria-hidden="true" style={{ position: 'absolute', width: 600, height: 600, top: -200, left: -200, borderRadius: '50%', filter: 'blur(90px)', background: 'radial-gradient(circle, rgba(196,181,253,0.28) 0%, transparent 65%)', pointerEvents: 'none', zIndex: 0 }} />
-      <div aria-hidden="true" style={{ position: 'absolute', width: 500, height: 500, bottom: -150, right: -100, borderRadius: '50%', filter: 'blur(80px)', background: 'radial-gradient(circle, rgba(186,230,255,0.22) 0%, transparent 65%)', pointerEvents: 'none', zIndex: 0 }} />
-
-      {/* HEADER */}
-      <header style={{ position: 'relative', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1.5rem', background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(196,181,253,0.2)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.45rem 1rem' }}>
-            <motion.div animate={{ scale: [1, 1.12, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
-              <Video style={{ width: 15, height: 15, color: ACCENT }} />
-            </motion.div>
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: TEXT }}>Drishya Vaani</span>
-          </div>
-          {(isActive || backendReady) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.22)' }}>
-              <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: 7, height: 7, borderRadius: '50%', background: '#059669' }} />
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669' }}>SignSync™ Active</span>
-            </div>
+      {/* ── Toolbar ───────────────────────────────────────────────────────── */}
+      <div className="tr-toolbar enter-fade">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+          <h1 className="display" style={{ fontSize: '1.9rem', lineHeight: 1 }}>
+            Translate
+          </h1>
+          {inCall && inRoom ? (
+            <span className="badge" style={{ color: meta.color, borderColor: 'var(--border-hover)' }}>
+              <span className="status-dot" data-live={callStatus === 'connected'} />
+              <span style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
+            </span>
+          ) : (
+            <span className="badge" style={{ color: backendReady ? 'var(--green)' : 'var(--text-faint)' }}>
+              <span className="status-dot" data-live={backendReady} />
+              <span style={{ color: 'var(--text-secondary)' }}>{backendReady ? 'Model ready' : 'Model offline'}</span>
+            </span>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '12px', padding: '3px' }}>
-            {Object.entries(LANG_CONFIG).map(([code, cfg]) => (
-              <button key={code} onClick={() => setLanguage(code)} style={{ padding: '0.3rem 0.85rem', borderRadius: '9px', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.18s', background: language === code ? ACCENT : 'transparent', color: language === code ? '#fff' : MUTED, boxShadow: language === code ? '0 2px 12px rgba(124,58,237,0.3)' : 'none' }}>{cfg.label}</button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: '12px', padding: '3px' }}>
-            {[{ id: 'solo', label: 'Solo', icon: User }, { id: 'call', label: 'Call', icon: Users }].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => handleModeSwitch(id)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.85rem', borderRadius: '9px', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.18s', background: mode === id ? ACCENT : 'transparent', color: mode === id ? '#fff' : MUTED, boxShadow: mode === id ? '0 2px 12px rgba(124,58,237,0.3)' : 'none' }}>
-                <Icon style={{ width: 12, height: 12 }} /> {label}
-              </button>
-            ))}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Segmented
+            ariaLabel="Mode"
+            value={mode}
+            onChange={handleModeSwitch}
+            options={[{ value: 'solo', label: 'Solo', icon: User }, { value: 'call', label: 'Call', icon: Users }]}
+          />
+          <Segmented
+            ariaLabel="Output language"
+            value={language}
+            onChange={setLanguage}
+            options={Object.entries(LANG_CONFIG).map(([code, cfg]) => ({ value: code, label: cfg.label }))}
+          />
+          {inCall && (
+            <span className="badge tr-hide-sm" title="WebRTC media is encrypted in transit (DTLS-SRTP)">
+              <Lock size={11} /> Transport Encrypted
+            </span>
+          )}
+          <span className="mono tr-hide-sm" style={{ fontSize: '0.76rem', color: 'var(--text-faint)', minWidth: 44, textAlign: 'right' }}>{currentTime}</span>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)' }}>
-            <Sparkles style={{ width: 11, height: 11, color: '#059669' }} />
-            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#059669' }}>End-to-end Encrypted</span>
-          </div>
-          <div style={{ padding: '0.35rem 0.85rem', borderRadius: '10px', background: GLASS, border: GLASS_B, fontSize: '0.8rem', fontWeight: 600, color: TEXT }}>{currentTime}</div>
-        </div>
-      </header>
-
-      {/* LOBBY */}
-      {!inRoom && mode === 'call' ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-            style={{ background: GLASS, backdropFilter: 'blur(24px)', border: GLASS_B, borderRadius: '28px', padding: '2.5rem', width: '100%', maxWidth: '420px', boxShadow: '0 24px 80px rgba(124,58,237,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ margin: '0 auto 1rem', width: 52, height: 52, borderRadius: '16px', background: 'rgba(124,58,237,0.08)', border: '1.5px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Users style={{ color: ACCENT, width: 22, height: 22 }} />
+      {/* ── Lobby ─────────────────────────────────────────────────────────── */}
+      {!inRoom && inCall ? (
+        <div className="tr-lobby-wrap">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="tr-lobby"
+          >
+            <div className="tr-lobby-art">
+              <span className="eyebrow" style={{ color: 'var(--stage-muted)' }}>Group call</span>
+              <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(2.2rem, 3.6vw, 3rem)', lineHeight: 1, marginTop: 18, color: 'var(--stage-text)' }}>
+                Sign together,<br /><em style={{ color: '#FF8A4C' }}>see every word.</em>
+              </h2>
+              <ul style={{ listStyle: 'none', marginTop: 28, display: 'grid', gap: 12, color: 'var(--stage-muted)', fontSize: '0.86rem' }}>
+                {['Up to 6 people per room', 'Live ISL captions shared with everyone', 'Chat and suggestions alongside video'].map(t => (
+                  <li key={t} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <CheckCircle2 size={15} style={{ color: '#FF8A4C', flexShrink: 0 }} /> {t}
+                  </li>
+                ))}
+              </ul>
+              <div style={{ position: 'absolute', right: -10, bottom: -30, opacity: 0.9 }}>
+                <HandLandmarks size={180} color="#F3EFE8" accent="#FF8A4C" />
               </div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: TEXT, marginBottom: '0.4rem' }}>Join Session</h2>
-              <p style={{ fontSize: '0.84rem', color: MUTED }}>Enter your name and room code to connect.</p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <input value={userName} onChange={e => setUserName(e.target.value)} placeholder="Your Name"
-                style={{ background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.75rem 1rem', fontSize: '0.88rem', color: TEXT, outline: 'none' }} />
-              <input value={roomInput} onChange={e => setRoomInput(normalizeRoomCode(e.target.value))} onKeyDown={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ROOM CODE" maxLength={8}
-                style={{ background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', padding: '0.75rem 1rem', fontSize: '0.92rem', fontWeight: 700, letterSpacing: '0.18em', textAlign: 'center', fontFamily: 'monospace', color: TEXT, outline: 'none', textTransform: 'uppercase' }} />
-              <motion.button onClick={handleJoinRoom} whileHover={{ scale: 1.02, boxShadow: '0 12px 36px rgba(124,58,237,0.3)' }} whileTap={{ scale: 0.97 }}
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '0.85rem', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
-                Join Call
-              </motion.button>
+
+            <div className="tr-lobby-form">
+              <div>
+                <h3 className="display" style={{ fontSize: '2rem' }}>Join a room</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 8 }}>
+                  Share the same code with the people you’re calling.
+                </p>
+              </div>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span className="section-label" style={{ margin: 0 }}>Your name</span>
+                <input className="input-field" style={{ height: 46 }} value={userName} onChange={e => setUserName(e.target.value)} placeholder="How others will see you" />
+              </label>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="section-label" style={{ margin: 0 }}>Room code</span>
+                  <button
+                    type="button"
+                    onClick={() => setRoomInput(normalizeRoomCode(Math.random().toString(36).slice(2, 8)))}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 0, color: 'var(--accent)', fontSize: '0.76rem', fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    <Shuffle size={12} /> New code
+                  </button>
+                </span>
+                <input
+                  className="input-field mono"
+                  value={roomInput}
+                  onChange={e => setRoomInput(normalizeRoomCode(e.target.value))}
+                  onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
+                  placeholder="ABCD1234"
+                  maxLength={8}
+                  style={{ height: 56, fontSize: '1.3rem', letterSpacing: '0.32em', textAlign: 'center', textTransform: 'uppercase' }}
+                />
+              </label>
+              <button onClick={handleJoinRoom} className="btn-primary btn-lg" style={{ width: '100%' }}>
+                <Phone size={16} /> Join call
+              </button>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Lock size={11} /> Your camera turns on when you join.
+              </p>
             </div>
           </motion.div>
         </div>
       ) : (
-        /* MAIN LAYOUT */
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '0.85rem', gap: '0.85rem', position: 'relative', zIndex: 10 }}>
+        /* ── Workspace ────────────────────────────────────────────────────── */
+        <div className="tr-body">
 
-          {/* VIDEO AREA */}
-          <div style={{ flex: 1, position: 'relative', borderRadius: '24px', overflow: 'hidden', background: 'rgba(12,9,35,0.94)', border: '1.5px solid rgba(196,181,253,0.22)', boxShadow: '0 20px 60px rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* STAGE */}
+          <div className={`stage tr-stage ${!inCall ? 'viewfinder' : ''}`}>
 
-            {mode === 'call' ? (
-              <>
-                {remotePeers.size > 0 ? (
-                  <VideoGrid remotePeers={remotePeers} pinnedPeerId={pinnedPeerId} onPinToggle={setPinnedPeerId} />
-                ) : (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: FAINT, zIndex: 10 }}>
-                    <Loader2 style={{ width: 32, height: 32, animation: 'spin 1s linear infinite' }} />
-                    <p style={{ fontSize: '0.9rem' }}>{callStatus === 'waiting' ? 'Waiting for others…' : 'Connecting…'}</p>
+            {inCall ? (
+              remotePeers.size > 0 ? (
+                <VideoGrid remotePeers={remotePeers} pinnedPeerId={pinnedPeerId} onPinToggle={setPinnedPeerId} />
+              ) : (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, color: 'var(--stage-muted)', zIndex: 4 }}>
+                  <div style={{ position: 'relative', width: 72, height: 72 }}>
+                    {[0, 1, 2].map(k => (
+                      <motion.span key={k}
+                        animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
+                        transition={{ duration: 2.4, repeat: Infinity, delay: k * 0.8, ease: 'easeOut' }}
+                        style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '1px solid rgba(255,138,76,0.6)' }}
+                      />
+                    ))}
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--stage-raised)', border: '1px solid var(--stage-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={24} style={{ color: 'var(--stage-text)' }} />
+                    </div>
                   </div>
-                )}
-              </>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.7rem', color: 'var(--stage-text)' }}>
+                      {callStatus === 'waiting' ? 'Waiting for others to join' : 'Connecting…'}
+                    </p>
+                    <p className="mono" style={{ fontSize: '0.72rem', marginTop: 8, letterSpacing: '0.2em' }}>ROOM {roomInput}</p>
+                  </div>
+                  {callStatus === 'waiting' && (
+                    <button onClick={() => setShowMeetingModal(true)} className="stage-chip" style={{ cursor: 'pointer', height: 36, padding: '0 14px' }}>
+                      <Link2 size={13} /> Share invite link
+                    </button>
+                  )}
+                </div>
+              )
             ) : (
               <>
-                <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', backfaceVisibility: 'hidden' }} />
+                <video ref={attachLocalVideo} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', backfaceVisibility: 'hidden' }} />
                 <canvas ref={canvasRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }} />
                 {!isActive && (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', background: 'rgba(12,9,35,0.85)', zIndex: 10 }}>
-                    <div style={{ width: 72, height: 72, borderRadius: '20px', background: 'rgba(124,58,237,0.15)', border: '2px solid rgba(124,58,237,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Video style={{ color: '#a78bfa', width: 30, height: 30 }} />
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22, zIndex: 10, background: 'radial-gradient(ellipse at center, #1A1816 0%, var(--stage) 70%)', padding: '24px 24px 96px', textAlign: 'center' }}>
+                    <HandLandmarks size={130} color="#F3EFE8" accent="#FF8A4C" />
+                    <div>
+                      <p style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--stage-text)', lineHeight: 1.05 }}>
+                        Raise a hand to begin.
+                      </p>
+                      <p style={{ color: 'var(--stage-muted)', fontSize: '0.86rem', marginTop: 10, maxWidth: '40ch' }}>
+                        Turn on your camera, sign at chest height, and hold each sign for a moment.
+                      </p>
                     </div>
-                    <p style={{ color: FAINT, fontSize: '0.88rem' }}>Camera is off</p>
-                    <motion.button onClick={handleStart} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
-                      style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: '#fff', border: 'none', borderRadius: '100px', padding: '0.75rem 2rem', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
-                      Start Camera
-                    </motion.button>
+                    <button onClick={handleStart} className="btn-primary btn-lg" style={{ background: '#FF8A4C', color: '#1C0E05' }}>
+                      <Video size={16} /> Start camera
+                    </button>
+                    {error && (
+                      <p style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#FF9A90', fontSize: '0.8rem' }}>
+                        <AlertCircle size={14} /> {error}
+                      </p>
+                    )}
                   </div>
                 )}
               </>
             )}
 
-            {/* Bottom gradient */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%', background: 'linear-gradient(to top, rgba(10,8,30,0.95) 0%, rgba(10,8,30,0.5) 45%, transparent 100%)', pointerEvents: 'none', zIndex: 5 }} />
+            {/* Grade for legibility */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(11,10,9,0.92) 0%, rgba(11,10,9,0.45) 45%, transparent 100%)', pointerEvents: 'none', zIndex: 5 }} />
 
-            {/* Participant badge */}
-            {mode === 'call' && remotePeers.size > 0 && (
-              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '12px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', zIndex: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 12 }}>
-                  {[1,2,3,4,5].map(i => <motion.div key={i} animate={{ height: ['4px','12px','4px'] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }} style={{ width: 3, background: '#34d399', borderRadius: 2 }} />)}
-                </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#fff' }}>{remotePeers.size === 1 ? (peerName || 'Partner') : `${remotePeers.size + 1} participants`}</span>
-              </div>
-            )}
-
-            {/* AI Tracking badge */}
-            {(mode === 'solo' || (mode === 'call' && remotePeers.size > 0)) && isAslActive && (
-              <div style={{ position: 'absolute', top: '1rem', ...(mode === 'call' ? { left: '10.5rem' } : { right: '1rem' }), background: 'rgba(124,58,237,0.18)', backdropFilter: 'blur(12px)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '10px', padding: '0.4rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem', zIndex: 10 }}>
-                <Sparkles style={{ width: 13, height: 13, color: '#a78bfa' }} />
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#c4b5fd' }}>AI Tracking Active</span>
-              </div>
-            )}
+            {/* Top-left chips */}
+            <div style={{ position: 'absolute', top: 16, left: inCall ? 16 : 52, display: 'flex', gap: 8, zIndex: 12, flexWrap: 'wrap' }}>
+              {inCall && remotePeers.size > 0 && (
+                <span className="stage-chip">
+                  <span style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 11 }}>
+                    {[1, 2, 3, 4].map(k => <motion.span key={k} animate={{ height: ['3px', '11px', '3px'] }} transition={{ duration: 1, repeat: Infinity, delay: k * 0.12 }} style={{ width: 2, background: '#5FD3A6', borderRadius: 2, display: 'block' }} />)}
+                  </span>
+                  {remotePeers.size === 1 ? (peerName || 'Partner') : `${remotePeers.size + 1} participants`}
+                </span>
+              )}
+              {isAslActive && (isActive || remotePeers.size > 0) && (
+                <span className="stage-chip">
+                  <span className="status-dot" data-live={isDetecting} style={{ color: isDetecting ? '#FF8A4C' : 'var(--stage-muted)' }} />
+                  {isDetecting ? 'Reading signs' : 'Detection paused'}
+                  {isDetecting && <span className="mono" style={{ color: 'var(--stage-muted)', fontSize: '0.66rem' }}>{fps} fps</span>}
+                </span>
+              )}
+              {isScreenSharing && (
+                <span className="stage-chip" style={{ color: '#8AB4FF' }}>
+                  <Monitor size={12} /> Sharing screen
+                  <button onClick={handleScreenShare} style={{ background: 'none', border: 0, color: 'var(--stage-text)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.72rem' }}>Stop</button>
+                </span>
+              )}
+            </div>
 
             {/* Local PiP */}
-            {mode === 'call' && (
-              <motion.div drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }}
-                style={{ position: 'absolute', top: '1rem', right: '1rem', width: 176, aspectRatio: '3/4', background: '#1a1528', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(196,181,253,0.3)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', cursor: 'move', zIndex: 20 }}
-                whileHover={{ borderColor: 'rgba(167,139,250,0.6)' }}>
-                <video ref={el => { videoRef.current = el; if (el && getStream() && el.srcObject !== getStream()) el.srcObject = getStream(); }} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: '0.6rem', left: '0.6rem', right: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: '6px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 500, color: '#fff' }}>{userName || 'You'}</div>
-                  {isMuted && <div style={{ background: 'rgba(239,68,68,0.8)', borderRadius: '50%', padding: '4px', display: 'flex' }}><VolumeX style={{ width: 10, height: 10, color: '#fff' }} /></div>}
+            {inCall && (
+              <motion.div
+                drag dragConstraints={{ left: -800, right: 0, top: 0, bottom: 400 }} dragMomentum={false}
+                whileDrag={{ scale: 1.03 }}
+                style={{ position: 'absolute', top: 16, right: 16, width: 168, aspectRatio: '3/4', background: '#161513', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(243,239,232,0.22)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.7)', cursor: 'grab', zIndex: 20 }}
+              >
+                <video ref={attachLocalVideo} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none' }}>
+                  <span className="stage-chip" style={{ height: 24, fontSize: '0.66rem', padding: '0 8px' }}>{userName || 'You'}</span>
+                  {isMuted && <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,122,110,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MicOff size={11} color="#fff" /></span>}
                 </div>
               </motion.div>
             )}
 
-            {/* Translation overlay */}
+            {/* Caption */}
             <AnimatePresence>
               {(sentence.length > 0 || translatedText) && isAslActive && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                  style={{ position: 'absolute', bottom: '5.5rem', width: 'calc(100% - 3rem)', maxWidth: 760, background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(24px)', border: '1px solid rgba(196,181,253,0.25)', borderRadius: '20px', padding: '1.25rem 1.5rem', overflow: 'hidden', zIndex: 20 }}>
-                  <motion.div animate={{ backgroundPosition: ['200% 0', '-200% 0'] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                    style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none', background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.5), transparent)', backgroundSize: '200% 100%' }} />
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                      <div style={{ padding: '0.3rem', background: 'rgba(124,58,237,0.2)', borderRadius: '8px' }}><MessageSquare style={{ width: 13, height: 13, color: '#a78bfa' }} /></div>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {mode === 'call' && remotePeers.size > 0 ? `${peerName || 'PARTNER'} TRANSLATING FROM ISL` : 'TRANSLATING FROM ISL'}
-                        {isTranslating && (
-                          <span style={{ display: 'flex', gap: 3 }}>
-                            {[0, 0.2, 0.4].map((d, i) => <motion.span key={i} animate={{ y: [0,-4,0] }} transition={{ duration: 0.6, repeat: Infinity, delay: d }} style={{ width: 4, height: 4, borderRadius: '50%', background: '#a78bfa', display: 'inline-block' }} />)}
-                          </span>
-                        )}
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="tr-caption"
+                >
+                  <p className="mono" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.62rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--stage-muted)', marginBottom: 10 }}>
+                    <span style={{ width: 14, height: 1, background: '#FF8A4C' }} />
+                    {inCall && remotePeers.size > 0 ? `${userName || 'You'} · ISL → ${LANG_CONFIG[language].full}` : `ISL → ${LANG_CONFIG[language].full}`}
+                    {isTranslating && (
+                      <span style={{ display: 'inline-flex', gap: 3 }}>
+                        {[0, 0.15, 0.3].map((d, k) => <motion.span key={k} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 0.9, repeat: Infinity, delay: d }} style={{ width: 4, height: 4, borderRadius: '50%', background: '#FF8A4C', display: 'inline-block' }} />)}
                       </span>
-                    </div>
-                    <p style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.5rem)', fontWeight: 500, color: '#fff', lineHeight: 1.25, fontFamily: "'Playfair Display', Georgia, serif" }}>"{getDisplayText() || getText()}"</p>
-                    {suggestions.length > 0 && (
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', overflowX: 'auto', paddingBottom: '2px' }}>
-                        {suggestions.map((s, i) => <button key={i} onClick={() => applySuggestion(s)} style={{ padding: '0.35rem 0.9rem', borderRadius: '9999px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', fontSize: '0.8rem', color: '#e2e8f0', cursor: 'pointer', whiteSpace: 'nowrap' }}>{s}</button>)}
-                      </div>
                     )}
-                  </div>
+                  </p>
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={displayText}
+                      initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className={language === 'en' ? '' : 'deva'}
+                      style={{ fontFamily: language === 'en' ? 'var(--font-serif)' : undefined, fontSize: language === 'en' ? 'clamp(1.6rem, 3.2vw, 2.6rem)' : 'clamp(1.4rem, 2.8vw, 2.2rem)', color: '#F3EFE8', lineHeight: 1.15 }}
+                    >
+                      {displayText}
+                    </motion.p>
+                  </AnimatePresence>
+                  {suggestions.length > 0 && (
+                    <div className="no-scrollbar" style={{ display: 'flex', gap: 6, marginTop: 14, overflowX: 'auto' }}>
+                      {suggestions.map((s, k) => (
+                        <button key={k} onClick={() => applySuggestion(s)} className="stage-chip" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                          <Lightbulb size={11} style={{ color: '#F2C14E' }} /> {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Floating control bar */}
-            <div style={{ position: 'absolute', bottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '9999px', padding: '0.5rem 1rem', zIndex: 30 }}>
-              {mode === 'call' && (
+            {/* Dock */}
+            <div className="dock" style={{ position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)', zIndex: 30 }}>
+              {inCall && (
                 <>
-                  <CtrlBtn active={isMuted} activeColor="rgba(239,68,68,0.25)" activeIconColor="#f87171" title={isMuted ? 'Unmute mic' : 'Mute mic'} onClick={handleMicToggle}>
-                    {isMuted ? <MicOff style={{ width: 18, height: 18 }} /> : <Mic style={{ width: 18, height: 18 }} />}
+                  <CtrlBtn state={isMuted ? 'danger' : undefined} title={isMuted ? 'Unmute mic' : 'Mute mic'} onClick={handleMicToggle}>
+                    {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
                   </CtrlBtn>
-                  <CtrlBtn active={isScreenSharing} activeColor="rgba(59,130,246,0.25)" activeIconColor="#60a5fa" title={isScreenSharing ? 'Stop sharing' : 'Share screen'} onClick={handleScreenShare}>
-                    {isScreenSharing ? <MonitorOff style={{ width: 18, height: 18 }} /> : <Monitor style={{ width: 18, height: 18 }} />}
+                  <CtrlBtn state={isScreenSharing ? 'on' : undefined} title={isScreenSharing ? 'Stop sharing' : 'Share screen'} onClick={handleScreenShare}>
+                    {isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />}
                   </CtrlBtn>
                   {inRoom && (
                     <CtrlBtn title="Share meeting link" onClick={() => setShowMeetingModal(true)}>
-                      <Link2 style={{ width: 18, height: 18 }} />
+                      <Link2 size={18} />
                     </CtrlBtn>
                   )}
-                  <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.18)' }} />
+                  <span style={{ width: 1, height: 26, background: 'var(--stage-border)', margin: '0 4px' }} />
                 </>
               )}
-              <CtrlBtn active={!isVideoOn} activeColor="rgba(239,68,68,0.25)" activeIconColor="#f87171" title="Toggle camera" onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}>
-                {isVideoOn ? <Video style={{ width: 18, height: 18 }} /> : <VideoOff style={{ width: 18, height: 18 }} />}
+              <CtrlBtn state={!isVideoOn ? 'danger' : undefined} title="Toggle camera" onClick={() => { setIsVideoOn(!isVideoOn); isVideoOn ? handleStop() : handleStart(); }}>
+                {isVideoOn ? <Video size={18} /> : <VideoOff size={18} />}
               </CtrlBtn>
-              <motion.button onClick={() => setIsAslActive(!isAslActive)} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }} title="Toggle AI detection"
-                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', background: isAslActive ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(255,255,255,0.1)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isAslActive ? '0 0 20px rgba(124,58,237,0.55)' : 'none', transition: 'all 0.25s' }}>
-                <Sparkles style={{ width: 18, height: 18 }} />
-              </motion.button>
-              <CtrlBtn active={isSidebarOpen} activeColor="rgba(255,255,255,0.2)" title="Transcript / Chat" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                <MessageSquare style={{ width: 18, height: 18 }} />
+              <CtrlBtn state={isAslActive ? 'accent' : undefined} title={isAslActive ? 'Hide ISL captions' : 'Show ISL captions'} onClick={() => setIsAslActive(!isAslActive)}>
+                <Sparkles size={18} />
               </CtrlBtn>
-              {mode === 'call' && (
+              <CtrlBtn state={isSidebarOpen ? 'on' : undefined} title="Transcript panel" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <PanelRight size={18} />
+              </CtrlBtn>
+              {inCall && (
                 <>
-                  <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.18)' }} />
-                  <motion.button onClick={handleLeaveRoom} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.1rem', borderRadius: '9999px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>
-                    <PhoneOff style={{ width: 14, height: 14 }} /> Leave
+                  <span style={{ width: 1, height: 26, background: 'var(--stage-border)', margin: '0 4px' }} />
+                  <motion.button onClick={handleLeaveRoom} whileTap={{ scale: 0.96 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, height: 44, padding: '0 16px', borderRadius: 14, background: '#E5483B', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.84rem' }}>
+                    <PhoneOff size={16} /> Leave
                   </motion.button>
                 </>
               )}
             </div>
-
-            {/* Screen share banner */}
-            {isScreenSharing && (
-              <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'rgba(59,130,246,0.18)', backdropFilter: 'blur(12px)', border: '1px solid rgba(96,165,250,0.35)', borderRadius: '12px', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 30 }}>
-                <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ width: 7, height: 7, borderRadius: '50%', background: '#60a5fa' }} />
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#93c5fd' }}>Sharing Screen</span>
-                <button onClick={handleScreenShare} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.72rem', textDecoration: 'underline' }}>Stop</button>
-              </div>
-            )}
           </div>
 
-          {/* SIDEBAR */}
-          <AnimatePresence>
+          {/* PANEL */}
+          <AnimatePresence initial={false}>
             {isSidebarOpen && (
-              <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 340, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                style={{ background: GLASS, backdropFilter: 'blur(24px)', border: GLASS_B, borderRadius: '22px', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, zIndex: 20, boxShadow: '0 12px 48px rgba(124,58,237,0.08)' }}>
-                <div style={{ display: 'flex', padding: '0.5rem', background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(196,181,253,0.18)', gap: '0.25rem' }}>
-                  <TabBtn active={sidebarTab === 'transcript'} onClick={() => setSidebarTab('transcript')}>Transcript</TabBtn>
-                  {mode === 'call' && <TabBtn active={sidebarTab === 'chat'} onClick={() => setSidebarTab('chat')}>Chat</TabBtn>}
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.88)', border: '1.5px solid rgba(196,181,253,0.22)', borderRadius: '18px', padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 2px 12px rgba(124,58,237,0.06)' }}>
-                    <ConfidenceRing pct={pct} hasHand={!!prediction?.hand_detected} />
-                    <div>
-                      <p style={{ fontSize: '1.05rem', fontWeight: 700, color: TEXT, marginBottom: '0.15rem' }}>{prediction?.hand_detected ? prediction.sign : '—'}</p>
-                      <p style={{ fontSize: '0.72rem', color: FAINT }}>{prediction?.hand_detected ? `Detected · ${prediction.inference_ms ?? '–'}ms` : 'No hand detected'}</p>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a78bfa' }}>Conversation</p>
-                  {chatMessages.map(msg => (
-                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: msg.sender === 'Me' ? ACCENT : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>{msg.sender === 'Me' ? 'Me' : msg.sender[0]}</div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{msg.sender === 'Me' ? (userName || 'You') : msg.sender}</span>
-                        <span style={{ fontSize: '0.66rem', color: FAINT }}>{msg.time}</span>
-                      </div>
-                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6 }}>{msg.text}</p>
-                    </div>
-                  ))}
-                  {(translatedText || getText()) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(124,58,237,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff' }}>Me</div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{userName || 'You'}</span>
-                        <span style={{ fontSize: '0.66rem', color: FAINT }}>Now</span>
-                        {isAslActive && <span style={{ fontSize: '0.6rem', fontWeight: 700, background: 'rgba(124,58,237,0.08)', color: ACCENT, border: '1px solid rgba(124,58,237,0.22)', borderRadius: '5px', padding: '1px 6px' }}>ASL</span>}
-                      </div>
-                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>{getDisplayText() || getText()}</p>
-                    </div>
-                  )}
-                  {mode === 'call' && peerSentence && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#fff' }}>{peerName ? peerName[0] : 'P'}</div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT }}>{peerName || 'Partner'}</span>
-                        <span style={{ fontSize: '0.66rem', color: FAINT }}>Now</span>
-                      </div>
-                      <p style={{ fontSize: '0.82rem', color: MUTED, paddingLeft: '2rem', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>{peerSentence}</p>
-                    </div>
-                  )}
-                  {(sentence.length > 0 || translatedText) && (
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                      {[
-                        { icon: Copy,    label: 'Copy',  action: handleCopy  },
-                        { icon: Save,    label: 'Save',  action: handleSave  },
-                        { icon: isSpeaking ? VolumeX : Volume2, label: isSpeaking ? 'Stop' : 'Speak', action: handleSpeak },
-                        { icon: RotateCcw, label: 'Reset', action: handleReset },
-                      ].map(({ icon: Icon, label, action }) => (
-                        <motion.button key={label} onClick={action} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', borderRadius: '9999px', background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.18)', color: ACCENT, fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
-                          <Icon style={{ width: 12, height: 12 }} /> {label}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {mode === 'call' && (
-                  <div style={{ padding: '0.85rem', borderTop: '1px solid rgba(196,181,253,0.18)', background: 'rgba(255,255,255,0.5)' }}>
-                    <div style={{ position: 'relative' }}>
-                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} placeholder="Type to speak or chat…"
-                        style={{ width: '100%', background: 'rgba(124,58,237,0.04)', border: '1.5px solid rgba(124,58,237,0.18)', borderRadius: '14px', paddingLeft: '1rem', paddingRight: '3rem', paddingTop: '0.7rem', paddingBottom: '0.7rem', fontSize: '0.84rem', color: TEXT, outline: 'none', boxSizing: 'border-box' }} />
-                      <button onClick={handleSendChat} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg,#7c3aed,#a855f7)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Send style={{ width: 14, height: 14, color: '#fff' }} />
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '0.62rem', color: FAINT, textAlign: 'center', marginTop: '0.4rem', fontFamily: 'monospace' }}>Press Enter to send</p>
+              <motion.aside
+                initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="tr-panel"
+              >
+                {inCall && (
+                  <div style={{ padding: '12px 12px 0' }}>
+                    <Segmented
+                      ariaLabel="Panel"
+                      value={sidebarTab}
+                      onChange={setSidebarTab}
+                      options={[{ value: 'transcript', label: 'Transcript' }, { value: 'chat', label: 'Chat' }]}
+                      style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}
+                    />
                   </div>
                 )}
-              </motion.div>
+
+                <div key={sidebarTab} className="stagger" style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 18, '--stagger': '60ms' }}>
+                  {(!inCall || sidebarTab === 'transcript') && (
+                    <>
+                      {/* Live reading */}
+                      <section>
+                        <p className="section-label">Live reading</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <ConfidenceRing pct={pct} hasHand={hasHand} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <AnimatePresence mode="wait">
+                              <motion.p
+                                key={hasHand ? prediction.sign : 'none'}
+                                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                transition={{ duration: 0.18 }}
+                                style={{ fontFamily: 'var(--font-serif)', fontSize: '1.9rem', lineHeight: 1, color: hasHand ? 'var(--text-primary)' : 'var(--text-ghost)' }}
+                              >
+                                {hasHand ? prediction.sign : 'No hand'}
+                              </motion.p>
+                            </AnimatePresence>
+                            <p className="mono" style={{ fontSize: '0.66rem', color: 'var(--text-faint)', marginTop: 8 }}>
+                              {hasHand ? `${prediction.inference_ms ?? '–'} ms · hold to commit` : 'Show a sign to the camera'}
+                            </p>
+                            <div style={{ height: 3, borderRadius: 3, background: 'var(--bg-inset)', marginTop: 8, overflow: 'hidden' }}>
+                              <motion.div animate={{ width: `${holdPct}%` }} transition={{ duration: 0.2 }} style={{ height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <hr className="hairline" />
+
+                      {/* Sentence */}
+                      <section>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <p className="section-label">Your sentence</p>
+                          {sentence.length > 0 && <span className="mono" style={{ fontSize: '0.64rem', color: 'var(--text-faint)' }}>{sentence.length} {sentence.length === 1 ? 'word' : 'words'}</span>}
+                        </div>
+                        {sentence.length > 0 || translatedText ? (
+                          <>
+                            {sentence.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {sentence.map((s, k) => <WordChip key={`${s.word}-${k}`} word={s.word} index={k} />)}
+                              </div>
+                            )}
+                            {language !== 'en' && translatedText && (
+                              <p className="deva" style={{ fontSize: '1.25rem', lineHeight: 1.45, marginTop: 14, color: 'var(--text-primary)' }}>{translatedText}</p>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginTop: 16 }}>
+                              {[
+                                { icon: Copy,    label: 'Copy',  action: handleCopy  },
+                                { icon: Save,    label: 'Save',  action: handleSave  },
+                                { icon: isSpeaking ? VolumeX : Volume2, label: isSpeaking ? 'Stop' : 'Speak', action: handleSpeak },
+                                { icon: RotateCcw, label: 'Reset', action: handleReset },
+                              ].map(({ icon: Icon, label, action }) => (
+                                <button key={label} onClick={action} className="tr-action">
+                                  <Icon size={15} strokeWidth={1.75} />
+                                  <span>{label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p style={{ fontSize: '0.84rem', color: 'var(--text-faint)', lineHeight: 1.6 }}>
+                            Words appear here as you sign. Hold each sign until the bar above fills.
+                          </p>
+                        )}
+                      </section>
+
+                      {suggestions.length > 0 && (
+                        <section>
+                          <p className="section-label">Suggestions</p>
+                          <div style={{ display: 'grid', gap: 4 }}>
+                            {suggestions.map((s, k) => (
+                              <button key={k} onClick={() => applySuggestion(s)} className="tr-suggestion">
+                                <span>{s}</span>
+                                <ArrowUpRight size={14} />
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {inCall && peerSentence && (
+                        <section className="card" style={{ padding: 14, borderColor: 'var(--blue-border)' }}>
+                          <p className="section-label" style={{ color: 'var(--blue)', marginBottom: 8 }}>{peerName || 'Partner'} is signing</p>
+                          <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', lineHeight: 1.2 }}>{peerSentence}</p>
+                        </section>
+                      )}
+                    </>
+                  )}
+
+                  {/* Conversation log */}
+                  {(!inCall || sidebarTab === 'chat') && (
+                    <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {(!inCall ? chatMessages.length > 0 : true) && <p className="section-label" style={{ margin: 0 }}>Conversation</p>}
+                      {inCall && chatMessages.length === 0 && (
+                        <p style={{ fontSize: '0.84rem', color: 'var(--text-faint)' }}>No messages yet. Type below, or pick a suggestion to send it.</p>
+                      )}
+                      {chatMessages.map(msg => {
+                        const me = msg.sender === 'Me';
+                        return (
+                          <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: me ? 'flex-end' : 'flex-start', gap: 4 }}>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                              {me ? (userName || 'You') : msg.sender} · <span className="mono">{msg.time}</span>
+                            </span>
+                            <p style={{
+                              maxWidth: '88%', padding: '9px 13px', fontSize: '0.86rem', lineHeight: 1.5,
+                              borderRadius: me ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                              background: me ? 'var(--accent)' : 'var(--bg-elevated)',
+                              color: me ? 'var(--accent-ink)' : 'var(--text-primary)',
+                              border: me ? 'none' : '1px solid var(--border)',
+                            }}>{msg.text}</p>
+                          </motion.div>
+                        );
+                      })}
+                    </section>
+                  )}
+                </div>
+
+                {inCall && sidebarTab === 'chat' && (
+                  <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text" className="input-field" value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+                        placeholder="Message everyone…"
+                        style={{ height: 44, paddingRight: 48 }}
+                      />
+                      <button onClick={handleSendChat} aria-label="Send" className="btn-primary" style={{ position: 'absolute', right: 5, top: 5, width: 34, height: 34, padding: 0, borderRadius: 9 }}>
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.aside>
             )}
           </AnimatePresence>
-
         </div>
       )}
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.22); border-radius: 9999px; }
+        .tr-root { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+        .tr-toolbar {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+          padding: 14px clamp(12px, 2vw, 20px) 0;
+        }
+        .tr-body { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 14px clamp(12px, 2vw, 20px) clamp(12px, 2vw, 20px); }
+        .tr-stage { flex: 1; min-width: 0; min-height: 420px; display: flex; align-items: center; justify-content: center; }
+        .tr-caption {
+          position: absolute; left: 50%; transform: translateX(-50%); bottom: 92px; z-index: 20;
+          width: calc(100% - 40px); max-width: 780px; padding: 18px 22px; border-radius: 20px;
+          background: rgba(11,10,9,0.58); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+          border: 1px solid var(--stage-border);
+        }
+        .tr-panel {
+          width: 360px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
+          background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: var(--shadow-sm);
+        }
+        .tr-action {
+          display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px; border-radius: 12px;
+          background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-secondary);
+          font-size: 0.7rem; cursor: pointer; transition: all .2s ease;
+        }
+        .tr-action:hover { color: var(--accent); border-color: var(--accent-border); background: var(--accent-softer); transform: translateY(-2px); }
+        .tr-action { transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease, background var(--dur-sm) ease, transform var(--dur-md) var(--ease-spring) !important; }
+        .tr-action:active { transform: scale(0.95); transition-duration: 80ms !important; }
+        .tr-action svg { transition: transform var(--dur-md) var(--ease-spring); }
+        .tr-action:hover svg { transform: scale(1.15); }
+        .tr-suggestion svg { transition: transform var(--dur-md) var(--ease-out), color var(--dur-sm) ease; }
+        .tr-suggestion:hover svg { transform: translate(2px, -2px); }
+        .tr-lobby-art::after { content: ""; position: absolute; inset: -40%; background: conic-gradient(from 0deg at 70% 80%, transparent, rgba(255,138,76,0.12), transparent 30%); animation: spin 18s linear infinite; pointer-events: none; }
+        .tr-lobby-art > * { position: relative; z-index: 1; }
+        .tr-suggestion {
+          display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left;
+          padding: 10px 12px; border-radius: 10px; background: transparent; border: 1px solid transparent;
+          color: var(--text-secondary); font-size: 0.86rem; cursor: pointer; transition: all .2s ease;
+        }
+        .tr-suggestion:hover { background: var(--bg-inset); border-color: var(--border); color: var(--text-primary); }
+        .tr-suggestion svg { color: var(--text-faint); flex-shrink: 0; }
+        .tr-suggestion:hover svg { color: var(--accent); }
+        .tr-lobby-wrap { flex: 1; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: 24px clamp(12px, 3vw, 32px); }
+        .tr-lobby {
+          display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 920px; overflow: hidden;
+          border-radius: var(--r-xl); border: 1px solid var(--border-hover); background: var(--bg-panel); box-shadow: var(--shadow-lg);
+        }
+        .tr-lobby-art { position: relative; overflow: hidden; padding: 40px; background: var(--stage); min-height: 420px; }
+        .tr-lobby-form { padding: 40px; display: flex; flex-direction: column; gap: 20px; justify-content: center; }
+        @media (max-width: 1000px) {
+          .tr-root { overflow-y: auto; height: auto; }
+          .tr-body { flex-direction: column; }
+          .tr-stage { min-height: 62vh; }
+          .tr-panel { width: 100%; max-height: none; }
+          .tr-lobby { grid-template-columns: 1fr; }
+          .tr-lobby-art { min-height: 260px; }
+        }
+        @media (max-width: 640px) {
+          .tr-hide-sm { display: none !important; }
+          .tr-caption { bottom: 84px; padding: 14px 16px; }
+          .tr-lobby-art, .tr-lobby-form { padding: 26px; }
+          .dock { gap: 4px !important; }
+          .dock-btn { width: 40px !important; height: 40px !important; }
+        }
       `}</style>
     </div>
   );
 }
 
-function CtrlBtn({ children, onClick, title, active = false, activeColor = 'rgba(255,255,255,0.2)', activeIconColor }) {
+function CtrlBtn({ children, onClick, title, state }) {
   return (
-    <motion.button onClick={onClick} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }} title={title}
-      style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer', background: active ? activeColor : 'rgba(255,255,255,0.08)', color: active && activeIconColor ? activeIconColor : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.18s, color 0.18s' }}>
-      {children}
-    </motion.button>
-  );
-}
-
-function TabBtn({ children, active, onClick }) {
-  return (
-    <button onClick={onClick} style={{ flex: 1, padding: '0.45rem 0.75rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, background: active ? 'rgba(124,58,237,0.12)' : 'transparent', color: active ? '#7c3aed' : '#94a3b8', transition: 'all 0.18s' }}>
+    <button onClick={onClick} data-tip={title} aria-label={title} className="dock-btn" data-state={state}>
       {children}
     </button>
   );

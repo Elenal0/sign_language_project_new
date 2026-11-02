@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
         // REST endpoints
         '/health':  { target: httpBackend, changeOrigin: true, secure: false },
         '/predict': { target: httpBackend, changeOrigin: true, secure: false },
+        '/turn-credentials': { target: httpBackend, changeOrigin: true, secure: false },
         // WebSocket signaling + chat relay
         '/ws': {
           target: wsBackend,

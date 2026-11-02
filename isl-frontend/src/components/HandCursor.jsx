@@ -11,6 +11,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import useHandCursor from '../hooks/useHandCursor'
 
 // ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ function DwellRing({ progress }) {
       <circle cx={cx} cy={cx} r={RADIUS} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={STROKE} />
       <circle
         cx={cx} cy={cx} r={RADIUS} fill="none"
-        stroke="rgba(99,210,255,0.9)" strokeWidth={STROKE}
+        stroke="rgba(255,138,76,0.9)" strokeWidth={STROKE}
         strokeDasharray={CIRCUM} strokeDashoffset={offset}
         strokeLinecap="round"
         transform={`rotate(-90 ${cx} ${cx})`}
@@ -67,7 +68,7 @@ function RippleBurst({ x, y, active }) {
             position: 'absolute',
             width: 60, height: 60,
             borderRadius: '50%',
-            border: '2px solid rgba(99,210,255,0.7)',
+            border: '2px solid rgba(255,138,76,0.7)',
             transform: 'translate(-50%,-50%) scale(0)',
             animation: `hc-ripple 0.6s ${i * 0.1}s ease-out forwards`,
           }}
@@ -91,8 +92,8 @@ function ScrollZoneBar({ zone }) {
         [isUp ? 'top' : 'bottom']: 0,
         height: '14vh',
         background: isUp
-          ? 'linear-gradient(to bottom, rgba(99,210,255,0.18) 0%, transparent 100%)'
-          : 'linear-gradient(to top, rgba(99,210,255,0.18) 0%, transparent 100%)',
+          ? 'linear-gradient(to bottom, rgba(255,138,76,0.18) 0%, transparent 100%)'
+          : 'linear-gradient(to top, rgba(255,138,76,0.18) 0%, transparent 100%)',
         pointerEvents: 'none',
         zIndex: 99990,
         display: 'flex',
@@ -106,9 +107,9 @@ function ScrollZoneBar({ zone }) {
         display: 'flex', alignItems: 'center', gap: 8,
         background: 'rgba(10,10,25,0.65)',
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(99,210,255,0.35)',
+        border: '1px solid rgba(255,138,76,0.35)',
         borderRadius: 24, padding: '5px 14px',
-        color: 'rgba(99,210,255,0.95)',
+        color: 'rgba(255,138,76,0.95)',
         fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em',
       }}>
         <span style={{ fontSize: '1rem' }}>{isUp ? '\u2191' : '\u2193'}</span>
@@ -136,6 +137,10 @@ export default function HandCursor() {
     }
   }, [isPinching])
 
+  // Navbar renders #hand-cursor-slot; mount the toggle there so it never covers page content
+  const [slot, setSlot] = useState(null)
+  useEffect(() => { setSlot(document.getElementById('hand-cursor-slot')) }, [])
+
   const dotSize = isPinching ? 24 : 14
 
   return (
@@ -151,8 +156,8 @@ export default function HandCursor() {
           to   { opacity: 1; }
         }
         @keyframes hc-btn-pulse {
-          0%, 100% { box-shadow: 0 0 16px rgba(99,210,255,0.3), 0 2px 12px rgba(0,0,0,0.5); }
-          50%       { box-shadow: 0 0 28px rgba(99,210,255,0.55), 0 2px 12px rgba(0,0,0,0.5); }
+          0%, 100% { box-shadow: 0 0 16px rgba(255,138,76,0.3), 0 2px 12px rgba(0,0,0,0.5); }
+          50%       { box-shadow: 0 0 28px rgba(255,138,76,0.55), 0 2px 12px rgba(0,0,0,0.5); }
         }
       `}</style>
 
@@ -173,11 +178,11 @@ export default function HandCursor() {
             width: dotSize, height: dotSize,
             borderRadius: '50%',
             background: isPinching
-              ? 'radial-gradient(circle, #ffffff 0%, #63d2ff 50%, transparent 100%)'
-              : 'radial-gradient(circle, #63d2ff 0%, #1e90ff 60%, transparent 100%)',
+              ? 'radial-gradient(circle, #ffffff 0%, #FF8A4C 50%, transparent 100%)'
+              : 'radial-gradient(circle, #FF8A4C 0%, #E5642A 60%, transparent 100%)',
             boxShadow: isPinching
-              ? '0 0 24px 10px rgba(99,210,255,0.9), 0 0 48px 20px rgba(30,144,255,0.45)'
-              : '0 0 12px 4px rgba(99,210,255,0.6)',
+              ? '0 0 24px 10px rgba(255,138,76,0.9), 0 0 48px 20px rgba(229,100,42,0.45)'
+              : '0 0 12px 4px rgba(255,138,76,0.6)',
             opacity: enabled ? 1 : 0,
             transform: `translate(${cursorPos.x - dotSize / 2}px, ${cursorPos.y - dotSize / 2}px)`,
             willChange: 'transform',
@@ -191,7 +196,7 @@ export default function HandCursor() {
           {isPinching && (
             <div style={{
               position: 'absolute', inset: -8, borderRadius: '50%',
-              border: '2px solid rgba(99,210,255,0.6)',
+              border: '2px solid rgba(255,138,76,0.6)',
               animation: 'hc-ripple 0.5s ease-out infinite',
             }} />
           )}
@@ -205,8 +210,8 @@ export default function HandCursor() {
             willChange: 'transform',
             fontSize: '1.2rem',
             pointerEvents: 'none',
-            filter: 'drop-shadow(0 0 6px rgba(99,210,255,0.8))',
-            color: 'rgba(99,210,255,0.95)',
+            filter: 'drop-shadow(0 0 6px rgba(255,138,76,0.8))',
+            color: 'rgba(255,138,76,0.95)',
           }}>
             {scrollZone === 'up' ? '\u2B06' : '\u2B07'}
           </div>
@@ -216,72 +221,38 @@ export default function HandCursor() {
       {/* Ripple burst */}
       <RippleBurst x={cursorPos.x} y={cursorPos.y} active={ripple} />
 
-      {/* Toggle Button */}
-      <button
-        id="hand-cursor-toggle"
-        ref={btnRef}
-        onClick={toggle}
-        aria-label={enabled ? 'Disable hand cursor' : 'Enable hand cursor'}
-        title={enabled ? 'Hand Cursor ON — pinch to click, move to edges to scroll' : 'Enable hand cursor control'}
-        style={{
-          position: 'fixed',
-          bottom: '1.5rem',
-          right: '1.5rem',
-          zIndex: 100000,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.45rem',
-          padding: '0.55rem 1rem',
-          borderRadius: '2rem',
-          border: enabled
-            ? '1.5px solid rgba(99,210,255,0.7)'
-            : '1.5px solid rgba(255,255,255,0.15)',
-          background: enabled
-            ? 'linear-gradient(135deg, rgba(30,144,255,0.25) 0%, rgba(99,210,255,0.15) 100%)'
-            : 'rgba(15,15,25,0.75)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          color: enabled ? '#63d2ff' : 'rgba(255,255,255,0.6)',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          letterSpacing: '0.03em',
-          cursor: 'pointer',
-          animation: enabled ? 'hc-btn-pulse 2.5s ease-in-out infinite' : 'none',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
-          transition: 'background 0.25s ease, border-color 0.25s ease, color 0.25s ease',
-          userSelect: 'none',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.04)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = '' }}
-      >
-        {/* Hand icon */}
-        <svg
-          width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
-          <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
-          <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
-          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
-        </svg>
-
-        {/* Status dot */}
-        <span
-          aria-hidden="true"
-          style={{
-            width: 7, height: 7,
-            borderRadius: '50%',
-            background: enabled ? '#63d2ff' : 'rgba(255,255,255,0.3)',
-            boxShadow: enabled ? '0 0 6px #63d2ff' : 'none',
-            flexShrink: 0,
-            transition: 'all 250ms ease',
-          }}
-        />
-
-        <span>{enabled ? 'Hand ON' : 'Hand OFF'}</span>
-      </button>
+      {/* Toggle — docked into the top bar when its slot exists */}
+      {(() => {
+        const button = (
+          <button
+            id="hand-cursor-toggle"
+            ref={btnRef}
+            onClick={toggle}
+            aria-pressed={enabled}
+            aria-label={enabled ? 'Disable hand cursor' : 'Enable hand cursor'}
+            title={enabled ? 'Hand cursor on — pinch to click, move to edges to scroll' : 'Control the app with your hand'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7, height: 34, padding: '0 11px', borderRadius: 10,
+              border: `1px solid ${enabled ? 'var(--accent-border)' : 'var(--border-hover)'}`,
+              background: enabled ? 'var(--accent-soft)' : 'var(--bg-panel)',
+              color: enabled ? 'var(--accent)' : 'var(--text-muted)',
+              fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', userSelect: 'none',
+              transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+              ...(slot ? {} : { position: 'fixed', bottom: '1.25rem', left: '1.25rem', zIndex: 100000, boxShadow: 'var(--shadow-md)' }),
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
+              <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
+              <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
+              <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+            </svg>
+            <span className="hc-label">Hand control</span>
+            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? 'var(--accent)' : 'var(--text-ghost)', boxShadow: enabled ? '0 0 0 3px var(--accent-soft)' : 'none' }} />
+          </button>
+        )
+        return slot ? createPortal(button, slot) : button
+      })()}
     </>
   )
 }

@@ -1,21 +1,29 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Hand, Home, Video, BookOpen,
-  GraduationCap, History, BarChart3,
-  ChevronLeft, ChevronRight, Cpu,
+  Home, Video, BookOpen, GraduationCap, History, BarChart3,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { useState, useEffect } from 'react'
+import { BrandMark, Wordmark } from '../ui/Brand'
 
-const NAV = [
-  { to: '/',           icon: Home,          label: 'Home'       },
-  { to: '/translate',  icon: Video,         label: 'Translator' },
-  { to: '/dictionary', icon: BookOpen,      label: 'Dictionary' },
-  { to: '/learn',      icon: GraduationCap, label: 'Learn'      },
-  { to: '/history',    icon: History,       label: 'History'    },
-  { to: '/dashboard',  icon: BarChart3,     label: 'Dashboard'  },
+const GROUPS = [
+  { label: null, items: [
+    { to: '/',           icon: Home,          label: 'Overview'   },
+    { to: '/translate',  icon: Video,         label: 'Translate'  },
+  ]},
+  { label: 'Library', items: [
+    { to: '/dictionary', icon: BookOpen,      label: 'Dictionary' },
+    { to: '/learn',      icon: GraduationCap, label: 'Learn'      },
+  ]},
+  { label: 'Insights', items: [
+    { to: '/history',    icon: History,       label: 'History'    },
+    { to: '/dashboard',  icon: BarChart3,     label: 'Analytics'  },
+  ]},
 ]
+
+const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } }
 
 export default function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useApp()
@@ -32,149 +40,101 @@ export default function Sidebar() {
 
   return (
     <motion.aside
-      animate={{ width: sidebarOpen ? 220 : 64 }}
-      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-      className="relative hidden md:flex flex-col h-full shrink-0"
-      style={{
-        background: 'var(--sidebar-bg)',
-        borderRight: '1px solid var(--border)',
-        // overflow must be visible so the -right-3 toggle button isn't clipped
-        overflow: 'visible',
-      }}
+      animate={{ width: sidebarOpen ? 232 : 68 }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      className="sidebar"
+      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)', overflow: 'hidden' }}
     >
-      {/* Logo — overflow-hidden here clips the expanding text, not the toggle */}
-      <div
-        className="flex items-center gap-3 px-4 py-5 overflow-hidden"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
-        <motion.div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}
-          whileHover={{ scale: 1.1, rotate: 5 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Hand className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-        </motion.div>
-
+      {/* Brand */}
+      <NavLink to="/" className="sidebar-brand" style={{ padding: '18px 18px 22px', height: 76 }} aria-label="Drishya Vaani home">
+        <BrandMark size={32} />
         <AnimatePresence>
-          {sidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              <p style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-                Drishya Vaani
-              </p>
-              <p style={{ color: 'var(--accent)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                v2.0 · ISL Bridge
-              </p>
-            </motion.div>
-          )}
+          {sidebarOpen && <motion.div {...fade}><Wordmark /></motion.div>}
         </AnimatePresence>
-      </div>
+      </NavLink>
 
-      {/* Nav Items */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
-        {NAV.map(({ to, icon: Icon, label }) => {
-          const active = to === '/'
-            ? location.pathname === '/'
-            : location.pathname.startsWith(to)
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              title={!sidebarOpen ? label : undefined}
-              style={{ textDecoration: 'none' }}
-            >
-              <motion.div
-                whileHover={{ x: 3 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
-                style={{
-                  background: active ? 'var(--accent-soft)' : 'transparent',
-                  border: active ? '1px solid var(--accent-border)' : '1px solid transparent',
-                  color: active ? 'var(--accent)' : 'var(--text-muted)',
-                }}
-              >
-                <Icon size={17} className="shrink-0" />
-                <AnimatePresence>
-                  {sidebarOpen && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      style={{
-                        fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap',
-                        color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                      }}
-                    >
-                      {label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            </NavLink>
-          )
-        })}
+      {/* Navigation */}
+      <nav className="sidebar-nav no-scrollbar" style={{ padding: '0 12px' }} aria-label="Main navigation">
+        {GROUPS.map((group, gi) => (
+          <div key={gi} style={{ marginBottom: 18 }}>
+            <div style={{ height: 22, display: 'flex', alignItems: 'center', padding: '0 10px', marginBottom: 2 }}>
+              {group.label && (sidebarOpen
+                ? <motion.span {...fade} className="section-label" style={{ margin: 0 }}>{group.label}</motion.span>
+                : <span className="hairline" style={{ width: 20 }} />)}
+            </div>
+            {group.items.map(({ to, icon: Icon, label }) => {
+              const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+              return (
+                <NavLink key={to} to={to} title={!sidebarOpen ? label : undefined} aria-current={active ? 'page' : undefined}>
+                  <div
+                    className="sidebar-item" data-active={active}
+                    style={{
+                      height: 40, padding: '0 12px', borderRadius: 11, marginBottom: 2,
+                    }}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="sidebar-active"
+                        transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                        style={{ position: 'absolute', inset: 0, borderRadius: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', boxShadow: 'var(--shadow-sm)' }}
+                      >
+                        <span style={{ position: 'absolute', left: -12, top: 11, bottom: 11, width: 3, borderRadius: '0 3px 3px 0', background: 'var(--accent)' }} />
+                      </motion.div>
+                    )}
+                    <Icon size={18} strokeWidth={1.75} className="sidebar-icon" style={{ position: 'relative', flexShrink: 0, color: active ? 'var(--accent)' : undefined }} />
+                    <AnimatePresence>
+                      {sidebarOpen && (
+                        <motion.span {...fade} style={{ position: 'relative', fontSize: '0.86rem', fontWeight: active ? 550 : 450, whiteSpace: 'nowrap' }}>
+                          {label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </NavLink>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Model Status — real /health */}
-      <div className="p-2" style={{ borderTop: '1px solid var(--border)' }}>
+      {/* Footer: model status + collapse */}
+      <div style={{ padding: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-          style={{ background: 'var(--bg-panel)' }}
-          title={!sidebarOpen ? (apiOnline ? 'Model Online' : 'Model Offline') : undefined}
+          className="sidebar-row"
+          style={{ height: 40, padding: '0 14px', borderRadius: 11, color: apiOnline ? 'var(--green)' : 'var(--red)' }}
+          title={!sidebarOpen ? (apiOnline ? 'Model online' : 'Model offline') : undefined}
         >
-          <div className="relative shrink-0">
-            <Cpu size={15} style={{ color: apiOnline ? 'var(--green)' : 'var(--red)' }} />
-            <span
-              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
-              style={{
-                background: apiOnline ? 'var(--green)' : 'var(--red)',
-                animation: apiOnline ? 'pulse 2s infinite' : 'none',
-              }}
-            />
-          </div>
+          <span className="status-dot" data-live={apiOnline} />
           <AnimatePresence>
             {sidebarOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                  {apiOnline ? 'Model Online' : 'Model Offline'}
+              <motion.div {...fade} style={{ whiteSpace: 'nowrap', lineHeight: 1.25 }}>
+                <p style={{ fontSize: '0.76rem', fontWeight: 550, color: 'var(--text-primary)' }}>
+                  {apiOnline ? 'Model online' : 'Model offline'}
                 </p>
-                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                  {apiOnline ? '99.7% accuracy' : 'Start backend'}
+                <p className="mono" style={{ fontSize: '0.64rem', color: 'var(--text-faint)' }}>
+                  {apiOnline ? 'classifier ready' : 'start the backend'}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
+        <button
+          onClick={() => setSidebarOpen(o => !o)}
+          className="icon-btn"
+          style={{ width: '100%', height: 36, justifyContent: sidebarOpen ? 'flex-start' : 'center', padding: sidebarOpen ? '0 12px' : 0, gap: 10 }}
+          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          {sidebarOpen ? <PanelLeftClose size={17} strokeWidth={1.75} /> : <PanelLeftOpen size={17} strokeWidth={1.75} />}
+          {sidebarOpen && <span style={{ fontSize: '0.78rem' }}>Collapse</span>}
+        </button>
       </div>
-
-      {/* Collapse Toggle — absolutely positioned, hangs off the right edge */}
-      <motion.button
-        onClick={() => setSidebarOpen(o => !o)}
-        className="absolute -right-3.5 top-20 w-7 h-7 rounded-full flex items-center justify-center"
-        style={{
-          background: 'var(--bg-elevated)',
-          border: '1.5px solid var(--border)',
-          cursor: 'pointer',
-          zIndex: 50,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
-        }}
-        whileHover={{ scale: 1.2, boxShadow: '0 0 10px var(--accent-glow)' }}
-        whileTap={{ scale: 0.9 }}
-      >
-        {sidebarOpen
-          ? <ChevronLeft  size={12} style={{ color: 'var(--text-secondary)' }} />
-          : <ChevronRight size={12} style={{ color: 'var(--text-secondary)' }} />}
-      </motion.button>
+      <style>{`
+        .sidebar-item { color: var(--text-muted); transition: color var(--dur-sm) ease; }
+        .sidebar-item[data-active="true"], .sidebar-item:hover { color: var(--text-primary); }
+        .sidebar-icon { transition: transform var(--dur-md) var(--ease-spring); }
+        .sidebar-item:hover .sidebar-icon { transform: scale(1.12) rotate(-4deg); }
+        .sidebar-item:active .sidebar-icon { transform: scale(0.92); }
+      `}</style>
     </motion.aside>
   )
 }

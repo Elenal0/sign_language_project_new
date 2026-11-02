@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Home, Video, BookOpen, GraduationCap, History, BarChart3, Command, ArrowRight } from 'lucide-react'
+import { Search, Home, Video, BookOpen, GraduationCap, History, BarChart3, CornerDownLeft } from 'lucide-react'
 
 const COMMANDS = [
   { to: '/',           icon: Home,          label: 'Home',       desc: 'Go to homepage' },
@@ -69,101 +69,82 @@ export default function CommandPalette() {
           onClick={() => { setOpen(false); setQuery(''); }}
           style={{
             position: 'fixed', inset: 0, zIndex: 100,
-            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+            background: 'rgba(8,7,6,0.55)', backdropFilter: 'blur(6px)',
             display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            paddingTop: '15vh',
+            padding: '14vh 16px 0',
           }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.97, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, scale: 0.98, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             onClick={e => e.stopPropagation()}
             className="glass-card"
-            style={{ width: '100%', maxWidth: 480, overflow: 'hidden' }}
+            role="dialog" aria-modal="true" aria-label="Command palette"
+            style={{ width: '100%', maxWidth: 560, overflow: 'hidden', borderRadius: 20 }}
           >
-            {/* Search input */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-              <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', height: 60, borderBottom: '1px solid var(--border)' }}>
+              <Search size={17} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search pages..."
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'inherit',
-                }}
+                placeholder="Where to?"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: '1.05rem', color: 'var(--text-primary)' }}
               />
-              <kbd style={{
-                fontSize: '0.65rem', padding: '2px 6px', borderRadius: 4,
-                background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-                color: 'var(--text-muted)', fontFamily: 'monospace',
-              }}>
-                ESC
-              </kbd>
+              <span className="kbd">Esc</span>
             </div>
 
-            {/* Results */}
-            <div style={{ maxHeight: 320, overflowY: 'auto', padding: 6 }}>
+            <div style={{ maxHeight: 360, overflowY: 'auto', padding: 8 }}>
               {filtered.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-ghost)', fontSize: '0.85rem' }}>
-                  No results found
+                <p style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-faint)', fontSize: '0.88rem' }}>
+                  No page matches “{query}”.
                 </p>
               ) : (
                 filtered.map((cmd, i) => {
                   const Icon = cmd.icon
                   const isSelected = i === selected
                   return (
-                    <motion.button
+                    <button
                       key={cmd.to}
                       onClick={() => handleSelect(cmd)}
                       onMouseEnter={() => setSelected(i)}
                       style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '10px 12px', borderRadius: 10, border: 'none',
-                        cursor: 'pointer', textAlign: 'left',
-                        background: isSelected ? 'var(--accent-soft)' : 'transparent',
-                        transition: 'background 0.15s ease',
+                        position: 'relative', width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '10px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', textAlign: 'left',
+                        background: 'transparent',
                       }}
                     >
-                      <div style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: isSelected ? 'var(--accent-soft)' : 'var(--bg-elevated)',
-                        border: `1px solid ${isSelected ? 'var(--accent-border)' : 'var(--border)'}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      {isSelected && (
+                        <motion.span layoutId="cmdk-sel" transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                          style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'var(--accent-soft)' }} />
+                      )}
+                      <span style={{
+                        position: 'relative', width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
                       }}>
-                        <Icon size={14} style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                          {cmd.label}
-                        </p>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{cmd.desc}</p>
-                      </div>
-                      {isSelected && <ArrowRight size={12} style={{ color: 'var(--accent)' }} />}
-                    </motion.button>
+                        <Icon size={15} strokeWidth={1.75} />
+                      </span>
+                      <span style={{ position: 'relative', flex: 1 }}>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>{cmd.label}</span>
+                        <span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{cmd.desc}</span>
+                      </span>
+                      {isSelected && <CornerDownLeft size={14} style={{ position: 'relative', color: 'var(--accent)' }} />}
+                    </button>
                   )
                 })
               )}
             </div>
 
-            {/* Footer hint */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-              padding: '8px 16px', borderTop: '1px solid var(--border)',
-              fontSize: '0.68rem', color: 'var(--text-ghost)',
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <kbd style={{ padding: '1px 4px', borderRadius: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontFamily: 'monospace' }}>↑↓</kbd> navigate
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <kbd style={{ padding: '1px 4px', borderRadius: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontFamily: 'monospace' }}>↵</kbd> select
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Command size={10} /> <kbd style={{ padding: '1px 4px', borderRadius: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontFamily: 'monospace' }}>K</kbd> toggle
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 18px', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="kbd">↑</span><span className="kbd">↓</span> navigate</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="kbd">↵</span> open</span>
+              <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-serif)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Drishya <em style={{ color: 'var(--accent)' }}>Vaani</em>
               </span>
             </div>
           </motion.div>

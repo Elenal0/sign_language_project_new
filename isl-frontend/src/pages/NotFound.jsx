@@ -1,92 +1,36 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, ArrowRight } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import HandLandmarks from '../components/ui/HandLandmarks'
+
+const ease = [0.16, 1, 0.3, 1]
 
 export default function NotFound() {
   return (
-    <div style={{
-      minHeight: '80vh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', padding: '2rem',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {/* Floating decorative shapes */}
-      {[...Array(5)].map((_, i) => (
-        <motion.div
-          key={i}
-          animate={{
-            y: [0, -30, 0],
-            rotate: [0, 180, 360],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 5 + i * 1.5,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: i * 0.5,
-          }}
-          style={{
-            position: 'absolute',
-            width: 20 + i * 15,
-            height: 20 + i * 15,
-            borderRadius: i % 2 === 0 ? '50%' : '30%',
-            background: `var(--accent-softer)`,
-            border: '1px solid var(--accent-border)',
-            top: `${15 + i * 15}%`,
-            left: `${10 + i * 18}%`,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}
-      >
-        <motion.h1
-          className="gradient-text animate-float"
-          style={{ fontSize: 'clamp(5rem, 15vw, 10rem)', fontWeight: 900, lineHeight: 1, marginBottom: 8 }}
-        >
-          404
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}
-        >
-          Page not found
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 32, maxWidth: 400 }}
-        >
-          The page you're looking for doesn't exist or has been moved.
-          Let's get you back on track.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-        >
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <motion.button
-              className="btn-primary"
-              style={{ fontSize: '0.9rem', padding: '0.7rem 1.5rem', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-              whileHover={{ scale: 1.05, boxShadow: '0 0 30px var(--accent-glow)' }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Home size={16} /> Go Home <ArrowRight size={14} />
-            </motion.button>
-          </Link>
+    <div style={{ flex: 1, minHeight: '78vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(2rem, 6vw, 5rem)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <motion.div initial={{ opacity: 0, rotate: -8 }} animate={{ opacity: 1, rotate: 0 }} transition={{ duration: 1, ease }}>
+          <HandLandmarks size={200} />
         </motion.div>
-      </motion.div>
+        <div style={{ maxWidth: 420 }}>
+          <motion.span className="eyebrow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            Error 404
+          </motion.span>
+          <motion.h1 className="display" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease }}
+            style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', marginTop: 18 }}>
+            Lost in <em>translation.</em>
+          </motion.h1>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            style={{ color: 'var(--text-muted)', marginTop: 18, lineHeight: 1.7 }}>
+            We couldn’t find this page. It may have moved, or the link might be mistyped.
+          </motion.p>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, ease }}
+            style={{ display: 'flex', gap: 10, marginTop: 28, flexWrap: 'wrap' }}>
+            <Link to="/" className="btn-primary btn-lg"><ArrowLeft size={16} /> Back to overview</Link>
+            <Link to="/translate" className="btn-secondary btn-lg">Open translator</Link>
+          </motion.div>
+        </div>
+      </div>
     </div>
   )
 }

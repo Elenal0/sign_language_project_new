@@ -11,15 +11,15 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, X, Link2, QrCode, Users } from 'lucide-react';
+import { Copy, Check, X, Lock } from 'lucide-react';
 
 /**
  * Builds the shareable meeting URL from just a room code.
  * Uses window.location.origin so it works on localhost AND production.
- * e.g. https://your-app.vercel.app/translator?room=ABC12345
+ * e.g. https://your-app.vercel.app/translate?room=ABC12345
  */
 function buildMeetingUrl(roomCode) {
-  return `${window.location.origin}/translator?room=${roomCode}`;
+  return `${window.location.origin}/translate?room=${roomCode}`;
 }
 
 export default function MeetingReadyModal({ roomCode, onDismiss }) {
@@ -35,7 +35,6 @@ export default function MeetingReadyModal({ roomCode, onDismiss }) {
 
   return (
     <AnimatePresence>
-      {/* Backdrop */}
       <motion.div
         key="mrm-backdrop"
         initial={{ opacity: 0 }}
@@ -44,193 +43,75 @@ export default function MeetingReadyModal({ roomCode, onDismiss }) {
         onClick={onDismiss}
         style={{
           position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '1rem',
+          background: 'rgba(8,7,6,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
         }}
       >
-        {/* Card */}
         <motion.div
           key="mrm-card"
-          initial={{ opacity: 0, scale: 0.92, y: 24 }}
+          role="dialog" aria-modal="true" aria-label="Invite people"
+          initial={{ opacity: 0, scale: 0.96, y: 18 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: 16 }}
-          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          exit={{ opacity: 0, scale: 0.97, y: 10 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 30 }}
           onClick={e => e.stopPropagation()}
-          style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
-            backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 24,
-            padding: '32px 28px',
-            width: '100%',
-            maxWidth: 420,
-            color: '#fff',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 20,
-          }}
+          className="glass-card"
+          style={{ width: '100%', maxWidth: 440, borderRadius: 24, overflow: 'hidden' }}
         >
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* Animated icon */}
-              <motion.div
-                animate={{ scale: [1, 1.12, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                style={{
-                  width: 44, height: 44, borderRadius: 14,
-                  background: 'rgba(99,102,241,0.2)',
-                  border: '1px solid rgba(99,102,241,0.35)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <Users size={20} style={{ color: '#818cf8' }} />
-              </motion.div>
-              <div>
-                <p style={{ fontSize: '1.1rem', fontWeight: 700, lineHeight: 1.2 }}>
-                  Your meeting's ready
-                </p>
-                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>
-                  Share the link or QR code to invite someone
-                </p>
-              </div>
+          <div style={{ padding: '26px 26px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div>
+              <span className="eyebrow">Room ready</span>
+              <h2 className="display" style={{ fontSize: '2.2rem', marginTop: 14 }}>
+                Invite <em>someone.</em>
+              </h2>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                Share the link, or let them scan the code with their phone.
+              </p>
             </div>
-
-            {/* Close button */}
-            <button
-              onClick={onDismiss}
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 10, padding: 6, cursor: 'pointer', color: 'rgba(255,255,255,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
-            >
-              <X size={16} />
-            </button>
+            <button onClick={onDismiss} className="icon-btn" aria-label="Close"><X size={16} /></button>
           </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.08)' }} />
+          {/* QR + code */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: 26 }}>
+            <div style={{ background: '#FFFFFF', borderRadius: 16, padding: 12, flexShrink: 0, boxShadow: 'var(--shadow-md)' }}>
+              <QRCodeSVG value={meetingUrl} size={124} bgColor="#ffffff" fgColor="#141311" level="M" includeMargin={false} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p className="section-label" style={{ marginBottom: 6 }}>Room code</p>
+              <p className="mono" style={{ fontSize: '1.7rem', letterSpacing: '0.2em', color: 'var(--text-primary)', wordBreak: 'break-all' }}>{roomCode}</p>
+            </div>
+          </div>
 
-          {/* Copyable link row */}
-          <div>
-            <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link2 size={11} /> Meeting link
-            </p>
-            <div
-              style={{
-                display: 'flex', alignItems: 'center',
-                background: 'rgba(0,0,0,0.35)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, overflow: 'hidden',
-              }}
-            >
+          {/* Link */}
+          <div style={{ padding: '0 26px 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 5, borderRadius: 14, background: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
               <span
-                style={{
-                  flex: 1, padding: '11px 14px',
-                  fontSize: '0.82rem', fontFamily: 'monospace',
-                  color: 'rgba(255,255,255,0.75)',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  userSelect: 'all',
-                }}
+                className="mono"
                 title={meetingUrl}
+                style={{ flex: 1, minWidth: 0, padding: '0 8px', fontSize: '0.76rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', userSelect: 'all' }}
               >
                 {meetingUrl}
               </span>
-              <motion.button
-                onClick={handleCopy}
-                whileTap={{ scale: 0.88 }}
-                style={{
-                  padding: '11px 14px',
-                  background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
-                  border: 'none',
-                  borderLeft: '1px solid rgba(255,255,255,0.08)',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  color: copied ? '#4ade80' : '#a5b4fc',
-                  fontSize: '0.78rem', fontWeight: 600,
-                  transition: 'all 0.2s',
-                  flexShrink: 0,
-                }}
-              >
-                <AnimatePresence mode="wait">
-                  {copied ? (
-                    <motion.span
-                      key="check"
-                      initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <Check size={14} /> Copied!
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="copy"
-                      initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <Copy size={14} /> Copy
-                    </motion.span>
-                  )}
+              <motion.button onClick={handleCopy} whileTap={{ scale: 0.95 }} className="btn-primary btn-sm" style={{ minWidth: 92 }}>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={copied ? 'ok' : 'copy'}
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}
+                  </motion.span>
                 </AnimatePresence>
               </motion.button>
             </div>
           </div>
 
-          {/* QR Code */}
-          <div>
-            <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <QrCode size={11} /> Scan with phone
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: 16,
-                  padding: 14,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                  display: 'inline-block',
-                }}
-              >
-                <QRCodeSVG
-                  value={meetingUrl}
-                  size={160}
-                  bgColor="#ffffff"
-                  fgColor="#0f0f0f"
-                  level="M"
-                  includeMargin={false}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Footer note */}
-          <div
-            style={{
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-              background: 'rgba(99,102,241,0.08)',
-              border: '1px solid rgba(99,102,241,0.2)',
-              borderRadius: 12, padding: '10px 14px',
-            }}
-          >
-            <div
-              style={{
-                width: 22, height: 22, borderRadius: 7, background: 'rgba(99,102,241,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
-              }}
-            >
-              <span style={{ fontSize: 11 }}>🔒</span>
-            </div>
-            <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
-              Only the person you share this link with can join. The call is end-to-end encrypted.
-            </p>
+          {/* Footer */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 26px', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)', fontSize: '0.74rem', color: 'var(--text-faint)' }}>
+            <Lock size={12} />
+            Anyone with the link can join. Video is encrypted in transit.
           </div>
         </motion.div>
       </motion.div>

@@ -10,9 +10,9 @@ const ICONS = {
 }
 
 const COLORS = {
-  success: { icon: 'var(--green)', bg: 'var(--green-soft)', border: 'var(--green-border)', bar: 'var(--green)' },
-  error:   { icon: 'var(--red)',   bg: 'var(--red-soft)',   border: 'var(--red-border)',   bar: 'var(--red)' },
-  info:    { icon: 'var(--blue)',  bg: 'var(--blue-soft)',  border: 'var(--blue-border)',  bar: 'var(--blue)' },
+  success: 'var(--green)',
+  error:   'var(--red)',
+  info:    'var(--blue)',
 }
 
 export default function AnimatedToast() {
@@ -35,59 +35,39 @@ export default function AnimatedToast() {
 
   const type = toast?.type || 'info'
   const Icon = ICONS[type] || Info
-  const colors = COLORS[type] || COLORS.info
+  const color = COLORS[type] || COLORS.info
 
   return (
     <AnimatePresence>
       {toast && (
         <motion.div
           key={toast.id}
-          initial={{ opacity: 0, x: 80, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 80, scale: 0.9 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          className="fixed bottom-6 right-6 z-[60] glass-card overflow-hidden"
-          style={{
-            minWidth: 280, maxWidth: 380,
-            border: `1px solid ${colors.border}`,
-            boxShadow: 'var(--shadow-lg)',
-          }}
-          role="alert"
+          initial={{ opacity: 0, y: -16, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+          role="status"
           aria-live="polite"
+          style={{
+            position: 'fixed', top: 68, left: '50%', x: '-50%', zIndex: 60,
+            minWidth: 280, maxWidth: 'calc(100vw - 32px)', overflow: 'hidden',
+            background: 'var(--text-primary)', color: 'var(--bg-base)',
+            borderRadius: 14, boxShadow: 'var(--shadow-lg)',
+          }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
-            <div
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}
-            >
-              <Icon size={16} style={{ color: colors.icon }} />
-            </div>
-            <p style={{ flex: 1, fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-              {toast.message}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 10px 11px 14px' }}>
+            <Icon size={16} style={{ color, flexShrink: 0 }} />
+            <p style={{ flex: 1, fontSize: '0.84rem', fontWeight: 500 }}>{toast.message}</p>
             <button
               onClick={dismissToast}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 4, borderRadius: 4,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              aria-label="Dismiss"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.55, padding: 4, display: 'flex' }}
             >
               <X size={14} />
             </button>
           </div>
-          {/* Progress bar */}
-          <div style={{ height: 2, background: 'var(--border)' }}>
-            <motion.div
-              style={{
-                height: '100%', background: colors.bar,
-                width: `${progress}%`,
-                borderRadius: '0 1px 1px 0',
-              }}
-              transition={{ duration: 0.03 }}
-            />
+          <div style={{ height: 2, background: 'transparent' }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: color, opacity: 0.8 }} />
           </div>
         </motion.div>
       )}

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell
+  BarChart, Bar, AreaChart, Area
 } from 'recharts'
-import { Activity, Cpu, AlertCircle, Sparkles, Zap, Users, TrendingUp } from 'lucide-react'
+import { AlertCircle, Sparkles, Zap, Users, TrendingUp } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import PageHeader from '../components/ui/PageHeader'
 
 // Mock Data
 const confTrend = [
@@ -54,14 +54,21 @@ function AnimatedCounter({ value, suffix = '', duration = 1.5 }) {
   )
 }
 
+const UNITS = { conf: '%', min: ' min', val: '' }
+const NAMES = { conf: 'Confidence', min: 'Session', val: 'Translations' }
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="glass-card" style={{ padding: '8px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginBottom: 4 }}>{label}</p>
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', boxShadow: 'var(--shadow-md)', minWidth: 120 }}>
+        <p className="mono" style={{ fontSize: '0.66rem', color: 'var(--text-faint)', marginBottom: 6 }}>{label}</p>
         {payload.map((entry, index) => (
-          <p key={`item-${index}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: entry.color || 'var(--accent)' }}>
-            {entry.name}: {entry.value}{entry.dataKey === 'conf' ? '%' : ''}
+          <p key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: entry.color || 'var(--chart-1)' }} />
+            {NAMES[entry.dataKey] || entry.name}
+            <span className="mono" style={{ marginLeft: 'auto', color: 'var(--text-primary)', fontWeight: 500 }}>
+              {entry.value}{UNITS[entry.dataKey] ?? ''}
+            </span>
           </p>
         ))}
       </div>
@@ -73,6 +80,26 @@ const CustomTooltip = ({ active, payload, label }) => {
 const SkeletonChart = () => (
   <div className="skeleton" style={{ width: '100%', height: '100%' }} />
 )
+
+function ChartCard({ title, value, sample, children, delay = 0, style }) {
+  return (
+    <section
+      className="card spotlight enter"
+      style={{ '--d': Math.round(delay * 1000), padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', ...style }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
+        <div>
+          <h2 style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>
+          {value && <p className="display" style={{ fontSize: '2rem', marginTop: 8 }}>{value}</p>}
+        </div>
+        {sample && <span className="badge mono" title="Illustrative data — not yet wired to real usage" style={{ fontSize: '0.6rem', letterSpacing: '0.08em' }}>SAMPLE</span>}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+const axis = { stroke: 'var(--chart-text)', fontSize: 11, tickLine: false, axisLine: false, fontFamily: 'Geist Mono, monospace' }
 
 export default function Dashboard() {
   const { history, totalTranslations, theme } = useApp()
@@ -88,166 +115,159 @@ export default function Dashboard() {
     ? Math.round(history.reduce((acc, h) => acc + h.confidence, 0) / history.length * 100)
     : 0
 
+  const savedCount = history.filter(h => h.saved).length
+  const topMax = Math.max(...topSigns.map(s => s.count))
+  const langTotal = langPie.reduce((a, l) => a + l.value, 0)
+
   return (
-    <div style={{ padding: '1.5rem', minHeight: '100%' }}>
+    <div className="page">
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Analytics Dashboard</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monitor translation performance and model statistics.</p>
-        </div>
+      <PageHeader
+        eyebrow="Insights"
+        title={<>How it’s <em>going</em></>}
+        deva="विश्लेषण"
+        sub="Your translation activity and model health. Charts marked sample show illustrative data."
+        actions={
+          <span className="badge" style={{ height: 32, padding: '0 12px', color: apiStatus === 'online' ? 'var(--green)' : apiStatus === 'offline' ? 'var(--red)' : 'var(--yellow)' }}>
+            {apiStatus === 'offline' ? <AlertCircle size={13} /> : <span className="status-dot" data-live={apiStatus === 'online'} />}
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.76rem' }}>
+              {apiStatus === 'checking' && 'Checking model…'}
+              {apiStatus === 'online' && 'Model online'}
+              {apiStatus === 'offline' && 'Model offline — start the backend'}
+            </span>
+          </span>
+        }
+      />
 
-        {/* Status Banner */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
-          background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 12
-        }}>
-          {apiStatus === 'checking' && <Activity size={16} style={{ color: 'var(--yellow)', animation: 'spin 1s linear infinite' }} />}
-          {apiStatus === 'online' && <Activity size={16} style={{ color: 'var(--green)' }} />}
-          {apiStatus === 'offline' && <AlertCircle size={16} style={{ color: 'var(--red)' }} />}
-          
-          <div>
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {apiStatus === 'checking' && 'Checking status...'}
-              {apiStatus === 'online' && 'Model Online'}
-              {apiStatus === 'offline' && 'Model Offline'}
-            </p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-faint)' }}>
-              {apiStatus === 'online' ? '99.7% avg confidence' : 'Start backend server'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
+      {/* ── KPIs ── */}
+      <div className="dash-kpis stagger" style={{ '--stagger-base': '200ms', '--stagger': '70ms' }}>
         {[
-          { label: 'Total Translations', value: totalTranslations, icon: Sparkles, color: 'var(--accent)',  bg: 'var(--accent-soft)' },
-          { label: 'Avg Confidence',     value: averageConfidence, suffix: '%', icon: TrendingUp, color: 'var(--green)',   bg: 'var(--green-soft)' },
-          { label: 'Saved Items',        value: history.filter(h => h.saved).length, icon: Zap,      color: 'var(--yellow)',  bg: 'var(--yellow-soft)' },
-          { label: 'Active Sessions',    value: 12,                icon: Users,    color: 'var(--blue)',    bg: 'var(--blue-soft)' },
-        ].map(({ label, value, suffix, icon: Icon, color, bg }, i) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, duration: 0.4 }}
-            className="card"
-            style={{ display: 'flex', alignItems: 'center', gap: 16 }}
-            whileHover={{ y: -2, boxShadow: 'var(--shadow-md)' }}
-          >
-            <div style={{
-              width: 44, height: 44, borderRadius: 12,
-              background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Icon size={20} style={{ color }} />
+          { label: 'Translations', value: totalTranslations, icon: Sparkles, note: 'all time' },
+          { label: 'Avg confidence', value: averageConfidence, suffix: '%', icon: TrendingUp, note: history.length ? `across ${history.length} saved` : 'no data yet' },
+          { label: 'Saved phrases', value: savedCount, icon: Zap, note: 'bookmarked' },
+          { label: 'Active sessions', value: 12, icon: Users, note: 'sample' },
+        ].map(({ label, value, suffix, icon: Icon, note }, i) => (
+          <div key={label} className="dash-kpi spotlight">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{label}</span>
+              <Icon size={15} strokeWidth={1.75} style={{ color: 'var(--text-faint)' }} />
             </div>
-            <div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</p>
-              <p style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>
-                <AnimatedCounter value={value} suffix={suffix} />
-              </p>
-            </div>
-          </motion.div>
+            <p className="display tnum" style={{ fontSize: 'clamp(2.6rem, 4vw, 3.4rem)', marginTop: 18 }}>
+              <AnimatedCounter value={value} suffix={suffix} />
+            </p>
+            <p className="mono" style={{ fontSize: '0.64rem', color: 'var(--text-faint)', marginTop: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{note}</p>
+          </div>
         ))}
       </div>
 
-      {/* ── Charts Grid ──────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 16 }}>
-        
-        {/* Confidence Trend */}
-        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
-          <p className="section-label">Real-time Confidence Trend</p>
-          <div style={{ height: 220, width: '100%' }}>
+      {/* ── Charts ── */}
+      <div className="dash-grid">
+
+        <ChartCard title="Recognition confidence" value={`${confTrend[confTrend.length - 1].conf}%`} sample delay={0.35}>
+          <div style={{ height: 220 }}>
             {!apiStatus ? <SkeletonChart /> : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={confTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                  <XAxis dataKey="time" stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} domain={[60, 100]} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="conf" stroke="var(--accent)" strokeWidth={3} dot={{ r: 3, fill: 'var(--bg-panel)', strokeWidth: 2 }} activeDot={{ r: 5 }} />
-                </LineChart>
+                <AreaChart data={confTrend} margin={{ top: 6, right: 16, left: -22, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="confFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis dataKey="time" {...axis} />
+                  <YAxis {...axis} domain={[60, 100]} />
+                  <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="conf" stroke="var(--chart-1)" strokeWidth={2} fill="url(#confFill)"
+                    dot={false} activeDot={{ r: 5, fill: 'var(--chart-1)', stroke: 'var(--bg-panel)', strokeWidth: 2 }} />
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
-        </motion.div>
+        </ChartCard>
 
-        {/* Category Distribution */}
-        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
-          <p className="section-label">Translations by Category</p>
-          <div style={{ height: 220, width: '100%' }}>
+        <ChartCard title="Translations by category" value={categoryData.reduce((a, c) => a + c.val, 0)} sample delay={0.43}>
+          <div style={{ height: 220 }}>
             {!apiStatus ? <SkeletonChart /> : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'var(--bg-elevated)', opacity: 0.5 }} />
-                  <Bar dataKey="val" fill="var(--blue)" radius={[4, 4, 0, 0]} />
+                <BarChart data={categoryData} margin={{ top: 6, right: 16, left: -22, bottom: 0 }} barCategoryGap="28%">
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis dataKey="name" {...axis} />
+                  <YAxis {...axis} />
+                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'var(--accent-softer)' }} />
+                  <Bar dataKey="val" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
-        </motion.div>
+        </ChartCard>
 
-        {/* Usage Time */}
-        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}>
-          <p className="section-label">Session Duration (Minutes)</p>
-          <div style={{ height: 220, width: '100%' }}>
-             {!apiStatus ? <SkeletonChart /> : (
+        <ChartCard title="Time signing per day" value={`${sessionData.reduce((a, d) => a + d.min, 0)} min`} sample delay={0.51}>
+          <div style={{ height: 220 }}>
+            {!apiStatus ? <SkeletonChart /> : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sessionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                  <XAxis dataKey="day" stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--chart-text)" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Line type="stepAfter" dataKey="min" stroke="var(--pink)" strokeWidth={2} dot={false} />
+                <LineChart data={sessionData} margin={{ top: 6, right: 16, left: -22, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis dataKey="day" {...axis} />
+                  <YAxis {...axis} />
+                  <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }} />
+                  <Line type="linear" dataKey="min" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3.5, fill: "var(--chart-1)", stroke: "var(--bg-panel)", strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: 'var(--chart-1)', stroke: 'var(--bg-panel)', strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
-             )}
+            )}
           </div>
-        </motion.div>
+        </ChartCard>
 
-        {/* Top Signs & Language Split */}
-        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} style={{ display: 'flex', flexDirection: 'column' }}>
-           <p className="section-label">Top Signs & Language</p>
-           <div style={{ display: 'flex', flex: 1, gap: 16 }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>Most Detected</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {topSigns.map((s, i) => (
-                    <div key={s.sign} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-elevated)', borderRadius: 6 }}>
-                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 600 }}>#{i+1}</span>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-primary)' }}>{s.sign}</span>
-                       </div>
-                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{s.count}</span>
-                    </div>
-                  ))}
+        <ChartCard title="Most detected signs" sample delay={0.59}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {topSigns.map((s, i) => (
+              <div key={s.sign} className="dash-rank" title={`${s.sign}: ${s.count}`}>
+                <span className="mono" style={{ fontSize: '0.66rem', color: 'var(--text-faint)', width: 20 }}>{String(i + 1).padStart(2, '0')}</span>
+                <span style={{ fontSize: '0.86rem', color: 'var(--text-primary)', width: 84 }}>{s.sign}</span>
+                <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'var(--bg-inset)', overflow: 'hidden' }}>
+                  <div className="bar-grow" style={{ '--d': 700 + i * 80, width: `${(s.count / topMax) * 100}%`, height: '100%', borderRadius: 4, background: 'var(--chart-1)' }} />
                 </div>
+                <span className="mono" style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', width: 28, textAlign: 'right' }}>{s.count}</span>
               </div>
-              <div style={{ width: 120, height: 120, position: 'relative' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={langPie} cx="50%" cy="50%" innerRadius={35} outerRadius={50} dataKey="value" stroke="none">
-                      {langPie.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--accent)' : 'var(--blue)'} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>EN</span>
-                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>75%</span>
-                </div>
-              </div>
-           </div>
-        </motion.div>
+            ))}
+          </div>
 
+          <hr className="hairline" style={{ margin: '22px 0 18px' }} />
+
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>Output language</p>
+          <div className="bar-grow" style={{ '--d': 900, display: 'flex', gap: 2, height: 10, borderRadius: 5, overflow: 'hidden' }}>
+            {langPie.map((l, i) => (
+              <div key={l.name} title={`${l.name}: ${l.value}%`}
+                style={{ flexGrow: l.value, flexBasis: 0, background: i === 0 ? 'var(--chart-1)' : 'var(--chart-2)' }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 18, marginTop: 12 }}>
+            {langPie.map((l, i) => (
+              <span key={l.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: i === 0 ? 'var(--chart-1)' : 'var(--chart-2)' }} />
+                {l.name}
+                <span className="mono" style={{ color: 'var(--text-primary)' }}>{Math.round((l.value / langTotal) * 100)}%</span>
+              </span>
+            ))}
+          </div>
+        </ChartCard>
       </div>
+
+      <style>{`
+        .dash-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: var(--r-xl); background: var(--bg-panel); overflow: hidden; }
+        .dash-kpi { padding: 22px 24px; border-left: 1px solid var(--border); border-radius: 0; }
+        .dash-kpi:first-child { border-left: 0; }
+        .dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .dash-rank { display: flex; align-items: center; gap: 12px; }
+        .bar-grow { transform-origin: 0 50%; animation: draw-x 1000ms var(--ease-out) backwards; animation-delay: calc(var(--d, 0) * 1ms); }
+        @media (max-width: 900px) {
+          .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+          .dash-kpi:nth-child(3) { border-left: 0; }
+          .dash-kpi:nth-child(n+3) { border-top: 1px solid var(--border); }
+          .dash-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
     </div>
   )
 }

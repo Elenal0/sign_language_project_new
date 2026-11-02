@@ -6,3 +6,5 @@ __pycache__/
 backend.err.log
 backend.out.log
 *.zip
+tempCodeRunnerFile.*
+try.py
