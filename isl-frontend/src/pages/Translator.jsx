@@ -342,7 +342,7 @@ export default function Translator() {
   } = useWebcam();
 
   const {
-    status: callStatus, myId,
+    status: callStatus, error: callError, myId,
     remotePeers,
     peerSentence, peerWord, peerSuggestion, peerName, peerChat,
     joinRoom, leaveRoom, sendTranslation, sendSuggestion, sendChatMessage,
@@ -426,7 +426,8 @@ export default function Translator() {
         setSentence(s => {
           const updated = [...s, { word: sign, confidence }];
           setSuggestions(getSuggestions(updated.map(x => x.word)));
-          if (mode === 'call' && callStatus === 'connected') {
+          // Relayed over the chat WebSocket — no need to wait for the WebRTC media path
+          if (mode === 'call' && inRoom) {
             sendTranslation(sign, updated.map(x => x.word).join(' '));
           }
           return updated;
@@ -436,7 +437,7 @@ export default function Translator() {
       }
       return next;
     });
-  }, [prediction, lastWord, getSuggestions, mode, callStatus, sendTranslation]);
+  }, [prediction, lastWord, getSuggestions, mode, inRoom, sendTranslation]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const getText = () => sentence.map(s => s.word).join(' ');
@@ -512,8 +513,8 @@ export default function Translator() {
     setChatMessages(p => [...p, msg]);
 
     // Relay the chosen suggestion to partner as a chat message
-    if (mode === 'call' && callStatus === 'connected' && sendChatMessage) {
-      sendChatMessage(text);
+    if (mode === 'call' && inRoom && sendChatMessage) {
+      if (!sendChatMessage(text)) showToast('Chat not connected yet — message not delivered', 'error');
     }
   };
 
@@ -523,8 +524,8 @@ export default function Translator() {
     setChatInput('');
     const msg = { id: Date.now(), sender: 'Me', text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
     setChatMessages(p => [...p, msg]);
-    if (mode === 'call' && callStatus === 'connected' && sendChatMessage) {
-      sendChatMessage(text);
+    if (mode === 'call' && inRoom && sendChatMessage) {
+      if (!sendChatMessage(text)) showToast('Chat not connected yet — message not delivered', 'error');
     }
   };
 
@@ -533,6 +534,11 @@ export default function Translator() {
       setChatMessages(p => [...p, { id: peerChat.id, sender: peerName || 'Partner', text: peerChat.text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }]);
     }
   }, [peerChat, peerName]);
+
+  // Surface signaling / connection errors from the call hook
+  useEffect(() => {
+    if (callError) showToast(callError, 'error');
+  }, [callError, showToast]);
 
   const handleJoinRoom = async () => {
     const roomId = normalizeRoomCode(roomInput);

@@ -1,39 +1,25 @@
-absl-py==2.4.0
-annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.13.0
-certifi==2026.4.22
-cffi==2.0.0
-click==8.4.0
-colorama==0.4.6
-contourpy==1.3.3
-cycler==0.12.1
+# ── Drishya Vaani / SanketSetu backend — server runtime dependencies ──────────
+# Target: Python 3.10 (see .python-version). These pins match the versions the
+# deployed model was trained/pickled with (sign_language_model.pkl → sklearn 1.4.2)
+# and the MediaPipe build that is proven to work on Render.
+# Training / NLP / recording deps live in src/requirements.txt and are NOT needed
+# to serve /predict or the video-call signaling.
+
+# Web server — [standard] pulls in `websockets`, `httptools`, `uvloop`.
+# WITHOUT a WebSocket library uvicorn answers every /ws/* upgrade with 404.
 fastapi==0.136.1
-flatbuffers==25.12.19
-fonttools==4.63.0
-h11==0.16.0
+uvicorn[standard]==0.46.0
+websockets>=13,<16
 httpx==0.28.1
-idna==3.15
+pydantic>=2.7,<3
+
+# ML inference
+numpy==2.2.6
+scikit-learn==1.4.2
+scipy==1.15.3
 joblib==1.5.3
-kiwisolver==1.5.0
-matplotlib==3.10.9
-numpy==2.4.5
+mediapipe==0.10.11
+# mediapipe 0.10.11 itself depends on opencv-contrib-python; pin it explicitly and do
+# NOT add opencv-python / opencv-python-headless too — they all install the same
+# `cv2` module and overwrite each other.
 opencv-contrib-python==4.13.0.92
-opencv-python-headless==4.13.0.92
-packaging==26.2
-pillow==12.2.0
-pycparser==3.0
-pydantic==2.13.4
-pydantic_core==2.46.4
-pyparsing==3.3.2
-python-dateutil==2.9.0.post0
-scikit-learn==1.8.0
-scipy==1.17.1
-six==1.17.0
-sounddevice==0.5.5
-starlette==1.0.0
-threadpoolctl==3.6.0
-typing-inspection==0.4.2
-typing_extensions==4.15.0
-uvicorn[standard]>=0.30.0
-websockets>=12.0

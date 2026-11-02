@@ -1,0 +1,27 @@
+# Render Blueprint for the Drishya Vaani backend.
+# Dashboard → New → Blueprint → pick this repo, OR copy these values into the
+# existing service's Settings by hand (see DEPLOYMENT.md).
+services:
+  - type: web
+    name: sign-language-backend
+    runtime: python
+    plan: free
+    branch: main                    # the signaling code lives on main
+    rootDir: sign_language_project
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # Exactly ONE worker: rooms/peers are kept in process memory.
+    startCommand: python -m uvicorn api.server:app --host 0.0.0.0 --port $PORT --ws websockets --proxy-headers --forwarded-allow-ips="*" --workers 1
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        value: https://drishya-vaani.vercel.app,http://localhost:5173,http://localhost:5174
+      # TURN (strongly recommended — needed when users are on different networks)
+      - key: METERED_API_KEY
+        sync: false
+      - key: METERED_APP_NAME
+        sync: false
